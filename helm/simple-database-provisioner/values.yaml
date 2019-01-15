@@ -1,0 +1,27 @@
+replicaCount: 1
+containerPort: 8080
+
+image:
+  name: simple-database-provisioner
+  tag: latest
+  pullPolicy: Never
+
+serviceType: ClusterIP
+ingress:
+  enabled: false
+  annotations: {}
+  domain: "MUST_BE_SET"
+  labels: {}
+
+resources:
+  limits:
+    memory: 100Mi
+    cpu: 100m
+  requests:
+    memory: 100Mi
+    cpu: 100m
+
+env: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}

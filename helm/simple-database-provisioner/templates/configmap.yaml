@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "sdp.name" . }}-config
+data:
+  config.yaml: |-
+     dbmsServers:
+      - name: dbms-dev-postgres
+        type: postgresql
+        fromSecret:
+          namespace: default
+          secret: dbms-dev-postgres-secret

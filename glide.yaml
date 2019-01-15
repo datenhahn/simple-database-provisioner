@@ -1,0 +1,20 @@
+package: simple-database-provisioner
+import:
+  - package: k8s.io/client-go
+    version: v10.0.0 # replace v9.0.0 with the required version
+  - package: k8s.io/code-generator
+    version: kubernetes-1.13.1
+  - package: k8s.io/gengo
+    version: master
+  - package: github.com/sirupsen/logrus
+    version: v1.2.0
+  - package: github.com/go-yaml/yaml
+    version: v2.2.2
+  - package: github.com/stretchr/testify
+    version: v1.2.2
+  - package: github.com/hashicorp/golang-lru
+    version: v0.5.0
+  - package: github.com/lib/pq
+    version: v1.0.0
+  - package: github.com/gin-gonic/gin
+    version: v1.3.0

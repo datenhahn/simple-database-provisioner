@@ -1,0 +1,70 @@
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: "{{ template "sdp.name" . }}"
+  labels:
+{{ include "sdp.metadata_labels" . | indent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+{{ include "sdp.selector_labels" . | indent 6 }}
+  template:
+    metadata:
+      labels:
+{{ include "sdp.selector_labels" . | indent 8 }}
+    spec:
+      serviceAccountName: simple-database-provisioner
+      imagePullSecrets:
+      - name: {{ .Values.imagePullSecret | default "regcred" }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.name }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+          - name: "http"
+            containerPort: {{ .Values.containerPort }}
+            livenessProbe:
+              httpGet:
+                path: /liveness
+                port: {{ .Values.containerPort }}
+              initialDelaySeconds: 60
+              periodSeconds: 15
+              failureThreshold: 4
+            readinessProbe:
+              httpGet:
+                path: /readiness
+                port: {{ .Values.containerPort }}
+              initialDelaySeconds: 15
+              periodSeconds: 15
+              failureThreshold: 4
+          volumeMounts:
+            - mountPath: /app/config
+              name: config
+          env:
+            - name: SIMPLEDATABASEPROVISIONER_CONFIGFILE
+              value: /app/config/config.yaml
+          {{- range $key, $value := .Values.env }}
+          - name: {{ $key | upper | replace "." "_" }}
+            value: {{ $value | quote }}
+          {{- end }}
+          resources:
+      volumes:
+        - name: config
+          configMap:
+            name: {{ template "sdp.name" . }}-config
+            key: config.yaml
+            path: config.yaml
+{{ toYaml .Values.resources | indent 12 }}
+    {{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+    {{- end }}

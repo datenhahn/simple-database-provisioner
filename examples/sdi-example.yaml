@@ -1,0 +1,7 @@
+apiVersion: simpledatabaseprovisioner.k8s.ecodia.de/v1alpha1
+kind: SimpleDatabaseInstance
+metadata:
+  name: sample-application-database
+spec:
+  dbmsServer: dbms-dev-postgres
+  databaseName: sample-application-database

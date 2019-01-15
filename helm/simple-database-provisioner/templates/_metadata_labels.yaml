@@ -1,0 +1,10 @@
+{{- /*
+sdp.metadata creates a standard metadata header.
+It creates a 'metadata:' section with name and labels.
+*/ -}}
+{{ define "sdp.metadata_labels" -}}
+app: {{ template "sdp.name" . }}
+chart: {{ template "sdp.chartref" . }}
+heritage: {{ .Release.Service | quote }}
+release: {{ .Release.Name | quote }}
+{{- end -}}

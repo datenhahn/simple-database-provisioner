@@ -1,0 +1,16 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: simpledatabaseinstances.simpledatabaseprovisioner.k8s.ecodia.de
+spec:
+  group: simpledatabaseprovisioner.k8s.ecodia.de
+  version: v1alpha1
+  scope: Namespaced
+  conditions:
+  stored_versions: []
+  names:
+    plural: simpledatabaseinstances
+    singular: simpledatabaseinstance
+    kind: SimpleDatabaseInstance
+    shortNames:
+     - sdi

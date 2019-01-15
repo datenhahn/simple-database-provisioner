@@ -1,0 +1,38 @@
+instances:
+  - id: my-instance
+    dbmsserver: my-dbms-server
+    databasename: my-instance-db-name
+    credentials:
+      host: myhost
+      user: myuser
+      password: mypassword
+      port: 5432
+      ssl: true
+      dbname: my-instance-db-name
+    meta:
+      - previous:
+        action: ""
+        state: ""
+        message: ""
+        lastupdate: 0001-01-01T00:00:00Z
+      current:
+        action: create
+        state: queued
+        message: Create my-new secret was added to queue
+        lastupdate: 2019-01-07T18:18:09+01:00
+bindings:
+  - id: my-binding
+    databaseinstanceid: my-instance-dev
+    secretname: my-new-secret
+    namespace: default
+    meta:
+      previous:
+        action: ""
+        state: ""
+        message: ""
+        lastupdate: 0001-01-01T00:00:00Z
+      current:
+        action: create
+        state: queued
+        message: Create my-new secret was added to queue
+        lastupdate: 2019-01-07T18:18:09+01:00

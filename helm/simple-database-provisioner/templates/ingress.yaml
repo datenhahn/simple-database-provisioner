@@ -1,0 +1,21 @@
+{{- if .Values.ingress.publicEnabled }}
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: "{{ template "sdp.name" . }}-ingress"
+  labels:
+{{ include "sdp.metadata_labels" . | indent 4 }}
+spec:
+  rules:
+    - host: "{{ template "sdp.defaultdomain" . }}"
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: "{{ template "sdp.name" . }}"
+              servicePort: {{ .Values.containerPort }}
+  tls:
+  - secretName: tls-cert
+    hosts:
+      - "{{ template "sdp.defaultdomain" . }}"
+{{ end -}}

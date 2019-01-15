@@ -1,0 +1,7 @@
+apiVersion: simpledatabaseprovisioner.k8s.ecodia.de/v1alpha1
+kind: SimpleDatabaseBinding
+metadata:
+  name: sample-application-binding
+spec:
+  instanceName: sample-application-database
+  secretName: sample-application-database-secret
