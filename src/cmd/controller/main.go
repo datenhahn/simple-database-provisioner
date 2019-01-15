@@ -154,7 +154,7 @@ func main() {
 
 	pollingProcessor := events.NewPollingEventProcessor(10*time.Second, myConfig, crdService, client, []dbms.DbmsProvider{postgresProvider})
 
-	logrus.Info("Starting polling with interval 10 secs ...")
+	logrus.Info("Starting polling with interval 1 secs ...")
 
 	commandApi := restapi.NewRestCommandApi(crdService)
 
@@ -163,7 +163,7 @@ func main() {
 	go func() {
 		for {
 			pollingProcessor.ProcessEvents()
-			time.Sleep(10 * time.Second)
+			time.Sleep(1 * time.Second)
 		}
 	}()
 

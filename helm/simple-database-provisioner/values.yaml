@@ -2,9 +2,9 @@ replicaCount: 1
 containerPort: 8080
 
 image:
-  name: simple-database-provisioner
+  name: ecodia/simple-database-provisioner
   tag: latest
-  pullPolicy: Never
+  pullPolicy: Always
 
 serviceType: ClusterIP
 ingress:
