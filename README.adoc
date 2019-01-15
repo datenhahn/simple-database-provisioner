@@ -93,10 +93,10 @@ data:
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
-  name: simpledatabaseinstances.k8s.ecodia.de
+  name: simpledatabaseinstances.simpledatabaseprovisioner.k8s.ecodia.de
 spec:
-  group: k8s.ecodia.de
-  version: v1
+  group: simpledatabaseprovisioner.k8s.ecodia.de
+  version: v1alpha1
   scope: Namespaced
   conditions:
   stored_versions: []
@@ -111,13 +111,13 @@ spec:
 **Example**
 
 ```yaml
-apiVersion: k8s.ecodia.de/v1
+apiVersion: simpledatabaseprovisioner.k8s.ecodia.de/v1alpha1
 kind: SimpleDatabaseInstance
 metadata:
-  name: mynamespace-myservice-database
+  name: sample-application-database
 spec:
-  dbmsServer: dev-postgres
-  databaseName: mynamespace-myservice
+  dbmsServer: dbms-dev-postgres
+  databaseName: sample-application-database
 ```
 
 ==== CDR: SimpleDatabaseBinding
@@ -126,10 +126,10 @@ spec:
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
-  name: simpledatabasebindings.k8s.ecodia.de
+  name: simpledatabasebindings.simpledatabaseprovisioner.k8s.ecodia.de
 spec:
-  group: k8s.ecodia.de
-  version: v1
+  group: simpledatabaseprovisioner.k8s.ecodia.de
+  version: v1alpha1
   scope: Namespaced
   names:
     plural: simpledatabasebindings
@@ -142,13 +142,13 @@ spec:
 **Example**
 
 ```yaml
-apiVersion: k8s.ecodia.de/v1
+apiVersion: simpledatabaseprovisioner.k8s.ecodia.de/v1alpha1
 kind: SimpleDatabaseBinding
 metadata:
-  name: mynamespace-myservice-binding
+  name: sample-application-binding
 spec:
-  instanceName: mynamespace-myservice-database
-  secretName: mynamespace-myservice-database-secret
+  instanceName: sample-application-database
+  secretName: sample-application-database-secret
 ```
 
 == Development
@@ -179,8 +179,8 @@ Let's jump right into some hands on commands
 
 For testing purposes it might be necessary to remove the instances and bindings:
 
-   kubectl delete sdi/mynamespace-myservice-database
-   kubectl delete sdb/mynamespace-myservice-binding
+   kubectl delete sdi/sample-application-database
+   kubectl delete sdb/sample-application-binding
 
 
 ==== Delete Custom Resource Definitions
@@ -189,26 +189,6 @@ For testing purposes it might be necessary to remove the custom resource definit
 
     kubectl delete crd/simpledatabasebindings.simpledatabaseprovisioner.k8s.ecodia.de
     kubectl delete crd/simpledatabaseinstances.simpledatabaseprovisioner.k8s.ecodia.de
-
-
-=== Code Architecture
-
-
-[blockdiag]
-----
-blockdiag {
-   // Set labels to nodes.
-   A [label = "foo"];
-   B [label = "bar"];
-   // And set text-color
-   C [label = "baz"];
-
-   // Set labels to edges. (short text only)
-   A -> B [label = "click bar", textcolor="red"];
-   B -> C [label = "click baz"];
-   C -> A;
-}
-----
 
 === Run tests
 
