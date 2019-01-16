@@ -3,6 +3,10 @@ kind: ConfigMap
 metadata:
   name: {{ template "sdp.name" . }}-config
 data:
+{{- if .Values.config }}
+  config.yaml: |-
+{{ toYaml .Values.config | indent 4 }}
+{{- else }}
   config.yaml: |-
      dbmsServers:
       - name: dbms-dev-postgres
@@ -10,3 +14,4 @@ data:
         fromSecret:
           namespace: default
           secret: dbms-dev-postgres-secret
+{{- end }}

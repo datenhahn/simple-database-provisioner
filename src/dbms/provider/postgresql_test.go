@@ -45,7 +45,7 @@ func createDatabase(t *testing.T, postgresqlProvider dbms.DbmsProvider, dbname s
 
 	assert.Nil(t, err)
 	assert.Equal(t, "golang-test-db", cred.Dbname)
-	assert.Equal(t, "golang-test-db", cred.User)
+	assert.Equal(t, "golang-test-db@localhost", cred.User)
 	assert.Equal(t, 5432, cred.Port)
 	assert.Equal(t, "localhost", cred.Host)
 	assert.Equal(t, false, cred.Ssl)

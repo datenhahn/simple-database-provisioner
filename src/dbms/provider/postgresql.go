@@ -90,7 +90,7 @@ func (this *PostgresqlDbmsProvider) CreateDatabaseInstance(dbmsServerId string, 
 
 	instanceCreds = dbmsServerCredentials
 	instanceCreds.Password = passwd
-	instanceCreds.User = databaseInstanceName
+	instanceCreds.User = fmt.Sprintf("%s@%s", databaseInstanceName, instanceCreds.Host)
 	instanceCreds.Dbname = databaseInstanceName
 
 	_, err = db.Exec(fmt.Sprintf("CREATE ROLE %s WITH PASSWORD %s LOGIN VALID UNTIL 'infinity';", QuoteIdentifier(databaseInstanceName), QuoteValue(passwd)))
