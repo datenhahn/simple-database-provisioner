@@ -74,15 +74,14 @@ apiVersion: v1
 kind: Secret
 type: Opaque
 metadata:
-  name: dev-postgres-secret
-  namespace: simpledatabaseprovisioner
+  name: dbms-dev-postgres-secret
 data:
-  host: MTM0MDg2NjUtMTk5Yy00ZWMzLTkyZTItMDRmN2QwOTFlNjQxLnBvc3RncmVzLmRhdGFiYXNlLmF6dXJlLmNvbQ==
+  database: cG9zdGdyZXM=
+  host: cG9zdGdyZXMtcG9zdGdyZXNxbA==
+  password: WkthNWE4Y0w0Yg==
   port: NTQzMg==
-  username: Z3pyZGFud3QzYUAxMzQwODY2NS0xOTljLTRlYzMtOTJlMi0wNGY3ZDA5MWU2NDE=
-  password: Q2pCdGpMRDU2bzVpNmk0SQ==
-  database: bm5zb2RqY3Y5aw==
   ssl: ZmFsc2U=
+  user: cG9zdGdyZXM=
 ```
 
 == Custom Resource Definitions
