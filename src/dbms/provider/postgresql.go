@@ -81,7 +81,7 @@ func (this *PostgresqlDbmsProvider) CreateDatabaseInstance(dbmsServerId string, 
 	_, err = db.Exec(fmt.Sprintf("CREATE DATABASE \"%s\"", databaseInstanceName))
 
 	if err != nil {
-		return dbms.DatabaseCredentials{}, err
+		return dbms.DatabaseCredentials{}, fmt.Errorf("Error executing 'CREATE DATABASE ...': %v - databaseInstance=%s - dbmsCreds=%s", err, databaseInstanceName, dbmsServerCredentials.String())
 	}
 
 	passwd := util.GeneratePassword(20)
@@ -96,19 +96,19 @@ func (this *PostgresqlDbmsProvider) CreateDatabaseInstance(dbmsServerId string, 
 	_, err = db.Exec(fmt.Sprintf("CREATE ROLE %s WITH PASSWORD %s LOGIN VALID UNTIL 'infinity';", QuoteIdentifier(databaseInstanceName), QuoteValue(passwd)))
 
 	if err != nil {
-		return dbms.DatabaseCredentials{}, err
+		return dbms.DatabaseCredentials{}, fmt.Errorf("Error executing 'CREATE ROLE ...': %v - databaseInstance=%s - dbmsCreds=%s", err, QuoteIdentifier(databaseInstanceName), dbmsServerCredentials.String())
 	}
 
 	_, err = db.Query(fmt.Sprintf("GRANT ALL PRIVILEGES ON DATABASE %s TO %s;", QuoteIdentifier(databaseInstanceName), QuoteIdentifier(databaseInstanceName)))
 
 	if err != nil {
-		return dbms.DatabaseCredentials{}, err
+		return dbms.DatabaseCredentials{}, fmt.Errorf("Error executing 'GRANT ...': %v - databaseInstance=%s - dbmsCreds=%s", err, QuoteIdentifier(databaseInstanceName), dbmsServerCredentials.String())
 	}
 
 	err = db.Close()
 
 	if err != nil {
-		return dbms.DatabaseCredentials{}, err
+		return dbms.DatabaseCredentials{}, fmt.Errorf("Error closing db connection: %v - databaseInstance=%s - dbmsCreds=%s", err, QuoteIdentifier(databaseInstanceName), dbmsServerCredentials.String())
 	}
 
 	return instanceCreds, nil

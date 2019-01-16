@@ -83,6 +83,7 @@ func main() {
 	configFile := flag.String("configFile", "/app/config.yaml", "the configuration file")
 	databaseFile := flag.String("databaseFile", "/persistence/database.yaml", "the database file where all state is stored in")
 	crdPath := flag.String("crdPath", "/app/crds", "path to the simpledatabasebinding.yaml and simpledatabaseinstance.yaml custom resource definitions")
+	logLevel := flag.String("logLevel", "info", "the log level (e.g. info, debug)")
 
 	flag.Parse()
 
@@ -100,6 +101,19 @@ func main() {
 		envCrdPath := os.Getenv("SIMPLEDATABASEPROVISIONER_CRDPATH")
 		crdPath = &envCrdPath
 	}
+
+	if os.Getenv("SIMPLEDATABASEPROVISIONER_LOGLEVEL") != "" {
+		envLogLevel := os.Getenv("SIMPLEDATABASEPROVISIONER_LOGLEVEL")
+		logLevel = &envLogLevel
+	}
+
+	level, err := logrus.ParseLevel(*logLevel)
+
+	if err != nil {
+		logrus.Panicf("Could not parse loglevel: %s : %v", *logLevel, err)
+	}
+
+	logrus.SetLevel(level)
 
 	myConfig, err := config.ReadConfig(*configFile)
 
