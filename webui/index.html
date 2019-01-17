@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>title</title>
+</head>
+<body>
+<script>
+    fetch('http://127.0.0.1:8080/list')
+        .then(function (response) {
+            return response.json();
+        })
+        .then(function (myJson) {
+            myJson["instances"]
+        });
+</script>
+</body>
+</html>

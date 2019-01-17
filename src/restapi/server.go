@@ -17,8 +17,8 @@
 package restapi
 
 import (
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"simple-database-provisioner/src/db"
 	"simple-database-provisioner/src/service"
 )
 
@@ -43,34 +43,16 @@ func (this *RestCommandApi) RunServer() {
 	go this.runServer()
 }
 
-func displayBindings(bindings []db.DatabaseBinding) []map[string]string {
-	lines := make([]map[string]string, 1)
-
-	for _, binding := range bindings {
-
-		text := make(map[string]string)
-
-		text["id"] = binding.Id
-		text["namespace"] = binding.Namespace
-		text["secret"] = binding.SecretName
-		text["databaseId"] = binding.DatabaseInstanceId
-		text["action"] = string(binding.Meta.Current.Action)
-		text["status"] = string(binding.Meta.Current.State)
-
-		lines = append(lines, text)
-	}
-
-	return lines
-}
-
 func (this *RestCommandApi) runServer() {
-	r := gin.Default()
+	r := gin.New()
+	r.Use(cors.Default())
 	r.GET("/list", func(c *gin.Context) {
 
 		c.JSON(200, gin.H{
 			"instances": this.crdService.FindAllDatabaseInstances(),
-			"bindings":  displayBindings(this.crdService.FindAllDatabaseBindings()),
+			"bindings":  this.crdService.FindAllDatabaseBindings(),
 		})
 	})
+
 	r.Run()
 }
