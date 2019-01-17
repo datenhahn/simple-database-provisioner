@@ -24,6 +24,7 @@ import (
 	"simple-database-provisioner/src/dbms"
 	"simple-database-provisioner/src/k8sclient"
 	"simple-database-provisioner/src/service"
+	"strings"
 	"time"
 )
 
@@ -138,6 +139,33 @@ func (this *PollingEventProcessor) processInstance(instance db.DatabaseInstance)
 				logrus.Errorf("There was an error updating state of instance: %s, %v", instance.Id, err)
 			}
 
+			return
+		}
+
+		exists, err := provider.ExistsDatabaseInstance(dbmsServer.Name, credentials, instance.DatabaseName)
+
+		if err != nil {
+			message := fmt.Sprintf("Could not check if database exists for server '%s' - %v", dbmsServer.Name, err)
+
+			errorState := CreateErrorState(instance.Meta.Current.Action, message)
+
+			err := this.crdService.UpdateDatabaseInstanceState(instance.Id, errorState)
+			if err != nil {
+				logrus.Errorf("There was an error updating state of instance: %s, %v", instance.Id, err)
+			}
+
+			return
+		}
+
+		if exists {
+			newState := CreateOkState(instance.Meta.Current.Action)
+			newState.Message = "Database already existed, keeping existing db"
+			err = this.crdService.UpdateDatabaseInstanceState(instance.Id, newState)
+			if err != nil {
+				logrus.Errorf("There was an error updating state of instance: %s", instance.Id)
+			}
+
+			logrus.Infof("Database already exists instance: %s", instance.Id)
 			return
 		}
 
@@ -281,6 +309,19 @@ func (this *PollingEventProcessor) processBinding(binding db.DatabaseBinding) {
 		err = this.apiclient.CreateSecret(binding.Namespace, binding.SecretName, dbInstance.Credentials)
 
 		if err != nil {
+
+			if strings.Contains(err.Error(), "already exists") {
+				newState := CreateOkState(binding.Meta.Current.Action)
+				newState.Message = "Secret already existed, using existing secret"
+				err = this.crdService.UpdateDatabaseBindingState(binding.Id, newState)
+				if err != nil {
+					logrus.Errorf("There was an error updating state of instance: %s", binding.Id)
+				}
+
+				logrus.Infof("Secret already exists: %s", binding.Id)
+				return
+			}
+
 			message := fmt.Sprintf("Could not create secret for binding '%s': %v", binding.Id, err)
 
 			errorState := CreateErrorState(binding.Meta.Current.Action, message)

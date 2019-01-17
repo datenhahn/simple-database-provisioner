@@ -118,18 +118,20 @@ func (this *PostgresqlDbmsProvider) CreateDatabaseInstance(dbmsServerId string, 
 
 func (this *PostgresqlDbmsProvider) ExistsDatabaseInstance(dbmsServerId string, dbmsServerCredentials dbms.DatabaseCredentials, databaseInstanceName string) (bool, error) {
 	db, err := connect(dbmsServerCredentials)
+
+	if err != nil {
+		return false, err
+	}
+
 	defer db.Close()
 
-	if err != nil {
-		return false, err
-	}
-
 	stmt, err := db.Prepare("SELECT 1 FROM pg_database WHERE datname=$1")
-	defer stmt.Close()
 
 	if err != nil {
 		return false, err
 	}
+
+	defer stmt.Close()
 
 	row := stmt.QueryRow(databaseInstanceName)
 
