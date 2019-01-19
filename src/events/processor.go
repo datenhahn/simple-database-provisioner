@@ -142,7 +142,7 @@ func (this *PollingEventProcessor) processInstance(instance db.DatabaseInstance)
 			return
 		}
 
-		exists, err := provider.ExistsDatabaseInstance(dbmsServer.Name, credentials, instance.DatabaseName)
+		exists, err := provider.ExistsDatabaseInstance(dbmsServer.Name, credentials, instance.PrefixedDatabaseName())
 
 		if err != nil {
 			message := fmt.Sprintf("Could not check if database exists for server '%s' - %v", dbmsServer.Name, err)
@@ -169,7 +169,7 @@ func (this *PollingEventProcessor) processInstance(instance db.DatabaseInstance)
 			return
 		}
 
-		instanceCredentials, err := provider.CreateDatabaseInstance(dbmsServer.Name, credentials, instance.DatabaseName)
+		instanceCredentials, err := provider.CreateDatabaseInstance(dbmsServer.Name, credentials, instance.PrefixedDatabaseName())
 
 		if err != nil {
 			message := fmt.Sprintf("Could not create database instance '%s' %v", instance.Id, err)
@@ -216,7 +216,7 @@ func (this *PollingEventProcessor) processInstance(instance db.DatabaseInstance)
 			logrus.Errorf("There was an error updating state of instance: %s", instance.Id)
 		}
 
-		logrus.Infof("Successfully created instance: %s", instance.Id)
+		logrus.Infof("Successfully created instance: namespace=%s, instance=%s", instance.Namespace, instance.Id)
 
 	} else if instance.Meta.Current.Action == db.DELETE {
 
@@ -236,9 +236,10 @@ func (this *PollingEventProcessor) processInstance(instance db.DatabaseInstance)
 			return
 		}
 
-		err = provider.DeleteDatabaseInstance(dbmsServer.Name, credentials, instance.DatabaseName)
+		err = provider.DeleteDatabaseInstance(dbmsServer.Name, credentials, instance.PrefixedDatabaseName())
 
-		if err != nil {
+		//TODO: replace string checks with err type checks
+		if err != nil && !strings.Contains(err.Error(), "does not exist") {
 
 			message := fmt.Sprintf("Could not delete databaseInstance '%s': %v", instance.Id, err)
 
@@ -310,6 +311,7 @@ func (this *PollingEventProcessor) processBinding(binding db.DatabaseBinding) {
 
 		if err != nil {
 
+			//TODO: replace string checks with err type checks
 			if strings.Contains(err.Error(), "already exists") {
 				newState := CreateOkState(binding.Meta.Current.Action)
 				newState.Message = "Secret already existed, using existing secret"
@@ -338,13 +340,14 @@ func (this *PollingEventProcessor) processBinding(binding db.DatabaseBinding) {
 			logrus.Errorf("There was an error updating state of instance: %s", binding.Id)
 		}
 
-		logrus.Infof("Successfully created binding: %s", binding.Id)
+		logrus.Infof("Successfully created binding: namespace=%s, binding=%s", binding.Namespace, binding.Id)
 
 	} else if binding.Meta.Current.Action == db.DELETE {
 
 		err := this.apiclient.DeleteSecret(binding.Namespace, binding.SecretName)
 
-		if err != nil {
+		//TODO: replace string checks with err type checks
+		if err != nil && !strings.Contains(err.Error(), "not found") {
 			message := fmt.Sprintf("Could not delete binding: %s, %v", binding.Id, err)
 
 			errorState := CreateErrorState(binding.Meta.Current.Action, message)

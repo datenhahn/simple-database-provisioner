@@ -156,6 +156,7 @@ func (this *PersistentCustomResourceDefinitionService) CreateDatabaseInstance(in
 
 	newInstance := db.DatabaseInstance{
 		Id:           instance.Name,
+		Namespace:    instance.Namespace,
 		DbmsServer:   instance.Spec.DbmsServer,
 		DatabaseName: instance.Spec.DatabaseName,
 		Meta: db.Meta{

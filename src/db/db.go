@@ -61,8 +61,13 @@ type DatabaseInstance struct {
 	Id           string
 	DbmsServer   string
 	DatabaseName string
+	Namespace    string
 	Credentials  map[string][]byte
 	Meta         Meta
+}
+
+func (this DatabaseInstance) PrefixedDatabaseName() string {
+	return fmt.Sprintf("%s-%s", this.Namespace, this.DatabaseName)
 }
 
 type DatabaseBinding struct {
