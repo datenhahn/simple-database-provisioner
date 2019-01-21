@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/sirupsen/logrus"
 	"simple-database-provisioner/pkg/apis/simpledatabaseprovisioner/v1alpha1"
+	"simple-database-provisioner/src/db"
 	"simple-database-provisioner/src/service"
 )
 
@@ -31,14 +32,14 @@ type SimpleDatabaseProvisionerEventHandler interface {
 }
 
 type GoSimpleDatabaseProvisionerEventHandler struct {
-	crdService service.CustomResourceDefinitionService
+	crdService service.CustomResourceService
 }
 
 func createEventId(action, objectUid string) string {
 	return fmt.Sprintf("%s-%s", action, objectUid)
 }
 
-func NewGoSimpleDatabaseProvisionerEventHandler(crdService service.CustomResourceDefinitionService) SimpleDatabaseProvisionerEventHandler {
+func NewGoSimpleDatabaseProvisionerEventHandler(crdService service.CustomResourceService) SimpleDatabaseProvisionerEventHandler {
 
 	this := &GoSimpleDatabaseProvisionerEventHandler{}
 	this.crdService = crdService
@@ -77,7 +78,7 @@ func (this *GoSimpleDatabaseProvisionerEventHandler) OnDeleteDatabaseBinding(bin
 		return
 	}
 
-	err := this.crdService.MarkDatabaseBindingForDeletion(binding.Name)
+	err := this.crdService.MarkDatabaseBindingForDeletion(db.NewNamespaceUniqueId(binding.Namespace, binding.Name))
 
 	if err != nil {
 		logrus.Errorf("Could not delete database binding '%s': %v", binding.Name, err)
@@ -118,7 +119,7 @@ func (this *GoSimpleDatabaseProvisionerEventHandler) OnDeleteDatabaseInstance(in
 		return
 	}
 
-	err := this.crdService.MarkDatabaseInstanceForDeletion(instance.Name)
+	err := this.crdService.MarkDatabaseInstanceForDeletion(db.NewNamespaceUniqueId(instance.Namespace, instance.Name))
 
 	if err != nil {
 		logrus.Errorf("Could not delete database instance '%s': %v", instance.Name, err)

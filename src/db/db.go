@@ -57,8 +57,14 @@ type Meta struct {
 	Current  State
 }
 
+type NamespaceUniqueId string
+
+func NewNamespaceUniqueId(namespace, k8sName string) NamespaceUniqueId {
+	return NamespaceUniqueId(fmt.Sprintf("%s-%s", namespace, k8sName))
+}
+
 type DatabaseInstance struct {
-	Id           string
+	K8sName      string
 	DbmsServer   string
 	DatabaseName string
 	Namespace    string
@@ -70,12 +76,20 @@ func (this DatabaseInstance) PrefixedDatabaseName() string {
 	return fmt.Sprintf("%s-%s", this.Namespace, this.DatabaseName)
 }
 
+func (this DatabaseInstance) NamespaceUniqueId() NamespaceUniqueId {
+	return NamespaceUniqueId(fmt.Sprintf("%s-%s", this.Namespace, this.K8sName))
+}
+
 type DatabaseBinding struct {
-	Id                 string
-	DatabaseInstanceId string
+	K8sName            string
+	DatabaseInstanceId NamespaceUniqueId
 	SecretName         string
 	Namespace          string
 	Meta               Meta
+}
+
+func (this DatabaseBinding) NamespaceUniqueId() NamespaceUniqueId {
+	return NamespaceUniqueId(fmt.Sprintf("%s-%s", this.Namespace, this.K8sName))
 }
 
 type DbData struct {
@@ -86,15 +100,15 @@ type DbData struct {
 
 type AppDatabase interface {
 	AddDatabaseBinding(binding DatabaseBinding) error
-	UpdateDatabaseBindingState(bindingId string, newState State) error
-	UpdateDatabaseInstanceState(instanceId string, newState State) error
+	UpdateDatabaseBindingState(bindingId NamespaceUniqueId, newState State) error
+	UpdateDatabaseInstanceState(instanceId NamespaceUniqueId, newState State) error
 	AddDatabaseInstance(instance DatabaseInstance) error
-	UpdateDatabaseInstanceCredentials(instanceId string, newCredentials map[string][]byte) error
-	DeleteDatabaseBinding(bindingId string) error
-	DeleteDatabaseInstance(instanceId string) error
-	WasProcessed(uid string) bool
-	MarkProcessed(uid string)
-	FindDatabaseInstanceById(instanceId string) (DatabaseInstance, error)
+	UpdateDatabaseInstanceCredentials(instanceId NamespaceUniqueId, newCredentials map[string][]byte) error
+	DeleteDatabaseBinding(bindingId NamespaceUniqueId) error
+	DeleteDatabaseInstance(bindingInstance NamespaceUniqueId) error
+	WasProcessed(eventId string) bool
+	MarkProcessed(eventId string)
+	FindDatabaseInstanceById(instanceId NamespaceUniqueId) (DatabaseInstance, error)
 	FindAllDatabaseInstances() []DatabaseInstance
 	FindAllDatabaseBindings() []DatabaseBinding
 }
@@ -114,7 +128,7 @@ func NewYamlAppDatabase(yamlFile string) AppDatabase {
 	return this
 }
 
-func (this *YamlAppDatabase) WasProcessed(uid string) bool {
+func (this *YamlAppDatabase) WasProcessed(eventId string) bool {
 
 	this.mutex.Lock()
 	defer this.mutex.Unlock()
@@ -126,7 +140,7 @@ func (this *YamlAppDatabase) WasProcessed(uid string) bool {
 	}
 
 	for _, processedUid := range data.ProcessedEvents {
-		if processedUid == uid {
+		if processedUid == eventId {
 			return true
 		}
 	}
@@ -134,9 +148,9 @@ func (this *YamlAppDatabase) WasProcessed(uid string) bool {
 	return false
 }
 
-func (this *YamlAppDatabase) MarkProcessed(uid string) {
+func (this *YamlAppDatabase) MarkProcessed(eventId string) {
 
-	if this.WasProcessed(uid) {
+	if this.WasProcessed(eventId) {
 		return
 	}
 
@@ -149,7 +163,7 @@ func (this *YamlAppDatabase) MarkProcessed(uid string) {
 		panic(err)
 	}
 
-	data.ProcessedEvents = append(data.ProcessedEvents, uid)
+	data.ProcessedEvents = append(data.ProcessedEvents, eventId)
 
 	err = this.save(data)
 
@@ -172,7 +186,7 @@ func (this *YamlAppDatabase) FindAllDatabaseInstances() []DatabaseInstance {
 	return data.DatabaseInstances
 }
 
-func (this *YamlAppDatabase) FindDatabaseInstanceById(instanceId string) (DatabaseInstance, error) {
+func (this *YamlAppDatabase) FindDatabaseInstanceById(instanceId NamespaceUniqueId) (DatabaseInstance, error) {
 
 	this.mutex.Lock()
 	defer this.mutex.Unlock()
@@ -184,7 +198,7 @@ func (this *YamlAppDatabase) FindDatabaseInstanceById(instanceId string) (Databa
 	}
 
 	for _, instance := range data.DatabaseInstances {
-		if instance.Id == instanceId {
+		if instance.NamespaceUniqueId() == instanceId {
 			return instance, nil
 		}
 	}
@@ -218,8 +232,8 @@ func (this *YamlAppDatabase) AddDatabaseBinding(binding DatabaseBinding) error {
 	}
 
 	for _, dbBinding := range data.DatabaseBindings {
-		if dbBinding.Id == binding.Id {
-			logrus.Debugf("Binding with id '%s' already exists, skipping", dbBinding.Id)
+		if dbBinding.K8sName == binding.K8sName {
+			logrus.Debugf("Binding with id '%s' already exists, skipping", dbBinding.K8sName)
 			return nil
 		}
 	}
@@ -231,7 +245,7 @@ func (this *YamlAppDatabase) AddDatabaseBinding(binding DatabaseBinding) error {
 	return err
 }
 
-func (this *YamlAppDatabase) UpdateDatabaseBindingState(bindingId string, newState State) error {
+func (this *YamlAppDatabase) UpdateDatabaseBindingState(bindingId NamespaceUniqueId, newState State) error {
 
 	this.mutex.Lock()
 	defer this.mutex.Unlock()
@@ -243,12 +257,12 @@ func (this *YamlAppDatabase) UpdateDatabaseBindingState(bindingId string, newSta
 	}
 
 	for index, dbBinding := range data.DatabaseBindings {
-		if dbBinding.Id == bindingId {
+		if dbBinding.NamespaceUniqueId() == bindingId {
 
 			data.DatabaseBindings[index].Meta.Previous = dbBinding.Meta.Current
 			data.DatabaseBindings[index].Meta.Current = newState
 
-			logrus.Debugf("Updated state for binding with id '%s' : %s", dbBinding.Id, newState.String())
+			logrus.Debugf("Updated state for binding with id '%s' : %s", dbBinding.K8sName, newState.String())
 		}
 	}
 
@@ -258,7 +272,7 @@ func (this *YamlAppDatabase) UpdateDatabaseBindingState(bindingId string, newSta
 
 }
 
-func (this *YamlAppDatabase) DeleteDatabaseBinding(bindingId string) error {
+func (this *YamlAppDatabase) DeleteDatabaseBinding(bindingId NamespaceUniqueId) error {
 
 	this.mutex.Lock()
 	defer this.mutex.Unlock()
@@ -272,7 +286,7 @@ func (this *YamlAppDatabase) DeleteDatabaseBinding(bindingId string) error {
 	newBindings := []DatabaseBinding{}
 
 	for _, dbBinding := range data.DatabaseBindings {
-		if dbBinding.Id != bindingId {
+		if dbBinding.NamespaceUniqueId() != bindingId {
 
 			newBindings = append(newBindings, dbBinding)
 		}
@@ -298,8 +312,8 @@ func (this *YamlAppDatabase) AddDatabaseInstance(instance DatabaseInstance) erro
 	}
 
 	for _, dbInstance := range data.DatabaseInstances {
-		if dbInstance.Id == instance.Id {
-			logrus.Debugf("Binding with id '%s' already exists, skipping", dbInstance.Id)
+		if dbInstance.K8sName == instance.K8sName {
+			logrus.Debugf("Binding with id '%s' already exists, skipping", dbInstance.K8sName)
 			return nil
 		}
 	}
@@ -311,7 +325,7 @@ func (this *YamlAppDatabase) AddDatabaseInstance(instance DatabaseInstance) erro
 	return err
 }
 
-func (this *YamlAppDatabase) UpdateDatabaseInstanceState(instanceId string, newState State) error {
+func (this *YamlAppDatabase) UpdateDatabaseInstanceState(instanceId NamespaceUniqueId, newState State) error {
 
 	this.mutex.Lock()
 	defer this.mutex.Unlock()
@@ -323,12 +337,12 @@ func (this *YamlAppDatabase) UpdateDatabaseInstanceState(instanceId string, newS
 	}
 
 	for index, dbInstance := range data.DatabaseInstances {
-		if dbInstance.Id == instanceId {
+		if dbInstance.NamespaceUniqueId() == instanceId {
 
 			data.DatabaseInstances[index].Meta.Previous = dbInstance.Meta.Current
 			data.DatabaseInstances[index].Meta.Current = newState
 
-			logrus.Debugf("Updated state for binding with id '%s' : %s", dbInstance.Id, newState.String())
+			logrus.Debugf("Updated state for binding with id '%s' : %s", dbInstance.K8sName, newState.String())
 		}
 	}
 
@@ -337,7 +351,7 @@ func (this *YamlAppDatabase) UpdateDatabaseInstanceState(instanceId string, newS
 	return err
 }
 
-func (this *YamlAppDatabase) UpdateDatabaseInstanceCredentials(instanceId string, newCredentials map[string][]byte) error {
+func (this *YamlAppDatabase) UpdateDatabaseInstanceCredentials(instanceId NamespaceUniqueId, newCredentials map[string][]byte) error {
 
 	this.mutex.Lock()
 	defer this.mutex.Unlock()
@@ -349,7 +363,7 @@ func (this *YamlAppDatabase) UpdateDatabaseInstanceCredentials(instanceId string
 	}
 
 	for index, dbInstance := range data.DatabaseInstances {
-		if dbInstance.Id == instanceId {
+		if dbInstance.NamespaceUniqueId() == instanceId {
 
 			data.DatabaseInstances[index].Credentials = newCredentials
 		}
@@ -359,7 +373,7 @@ func (this *YamlAppDatabase) UpdateDatabaseInstanceCredentials(instanceId string
 
 	return err
 }
-func (this *YamlAppDatabase) DeleteDatabaseInstance(instanceId string) error {
+func (this *YamlAppDatabase) DeleteDatabaseInstance(instanceId NamespaceUniqueId) error {
 
 	this.mutex.Lock()
 	defer this.mutex.Unlock()
@@ -373,7 +387,7 @@ func (this *YamlAppDatabase) DeleteDatabaseInstance(instanceId string) error {
 	newInstances := []DatabaseInstance{}
 
 	for _, dbInstance := range data.DatabaseInstances {
-		if dbInstance.Id != instanceId {
+		if dbInstance.NamespaceUniqueId() != instanceId {
 
 			newInstances = append(newInstances, dbInstance)
 		}

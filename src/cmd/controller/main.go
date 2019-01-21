@@ -134,7 +134,7 @@ func main() {
 	client := k8sclient.NewGoK8sClient(insideCluster)
 
 	appDb := db.NewYamlAppDatabase(*databaseFile)
-	crdService := service.NewPersistentCustomResourceDefinitionService(appDb)
+	crdService := service.NewPersistentCustomResourceService(appDb)
 	crdEventHandler := events.NewGoSimpleDatabaseProvisionerEventHandler(crdService)
 
 	eventHandler := cache.ResourceEventHandlerFuncs{

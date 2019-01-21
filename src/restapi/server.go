@@ -27,10 +27,10 @@ type CommandApi interface {
 }
 
 type RestCommandApi struct {
-	crdService service.CustomResourceDefinitionService
+	crdService service.CustomResourceService
 }
 
-func NewRestCommandApi(crdService service.CustomResourceDefinitionService) CommandApi {
+func NewRestCommandApi(crdService service.CustomResourceService) CommandApi {
 
 	this := &RestCommandApi{}
 
@@ -50,10 +50,10 @@ func displayBindings(bindings []db.DatabaseBinding) []map[string]string {
 
 		text := make(map[string]string)
 
-		text["id"] = binding.Id
+		text["id"] = binding.K8sName
 		text["namespace"] = binding.Namespace
 		text["secret"] = binding.SecretName
-		text["databaseId"] = binding.DatabaseInstanceId
+		text["databaseId"] = string(binding.DatabaseInstanceId)
 		text["action"] = string(binding.Meta.Current.Action)
 		text["status"] = string(binding.Meta.Current.State)
 
