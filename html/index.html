@@ -38,7 +38,6 @@
         }
 
 
-
     </style>
 </head>
 <body>
@@ -72,7 +71,7 @@
     // text["status"] = string(instance.Meta.Current.State)
     // text["message"] = instance.Meta.Current.Message
 
-    fetch('http://127.0.0.1:8080/list')
+    fetch(document.location.origin + '/list')
         .then(function (response) {
             return response.json();
         })
@@ -90,14 +89,14 @@
                 "</tr>";
 
             myJson["instances"].forEach(
-                function(element) {
+                function (element) {
                     rows += "<tr>" +
                         "<td>" + element["id"] + "</td>" +
                         "<td>" + element["namespace"] + "</td>" +
                         "<td>" + element["databaseName"] + "</td>" +
                         "<td>" + element["dbmsServer"] + "</td>" +
                         "<td>" + element["action"] + "</td>" +
-                        "<td class=\"state-"+ element["status"].toLowerCase() + "\">" + element["status"] + "</td>" +
+                        "<td class=\"state-" + element["status"].toLowerCase() + "\">" + element["status"] + "</td>" +
                         "<td>" + element["message"] + "</td>" +
                         "</tr>"
                 }
@@ -117,14 +116,14 @@
                 "</tr>";
 
             myJson["bindings"].forEach(
-                function(element) {
+                function (element) {
                     rows += "<tr>" +
                         "<td>" + element["id"] + "</td>" +
                         "<td>" + element["namespace"] + "</td>" +
                         "<td>" + element["secret"] + "</td>" +
                         "<td>" + element["databaseId"] + "</td>" +
                         "<td>" + element["action"] + "</td>" +
-                        "<td class=\"state-"+ element["status"].toLowerCase() + "\">" + element["status"] + "</td>" +
+                        "<td class=\"state-" + element["status"].toLowerCase() + "\">" + element["status"] + "</td>" +
                         "<td>" + element["message"] + "</td>" +
                         "</tr>"
                 }
