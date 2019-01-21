@@ -19,6 +19,7 @@ package restapi
 import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"simple-database-provisioner/src/db"
 	"simple-database-provisioner/src/service"
 )
 
@@ -27,10 +28,10 @@ type CommandApi interface {
 }
 
 type RestCommandApi struct {
-	crdService service.CustomResourceDefinitionService
+	crdService service.CustomResourceService
 }
 
-func NewRestCommandApi(crdService service.CustomResourceDefinitionService) CommandApi {
+func NewRestCommandApi(crdService service.CustomResourceService) CommandApi {
 
 	this := &RestCommandApi{}
 
@@ -43,14 +44,56 @@ func (this *RestCommandApi) RunServer() {
 	go this.runServer()
 }
 
+func displayBindings(bindings []db.DatabaseBinding) []map[string]string {
+	lines := make([]map[string]string, 1)
+
+	for _, binding := range bindings {
+
+		text := make(map[string]string)
+
+		text["id"] = binding.K8sName
+		text["namespace"] = binding.Namespace
+		text["secret"] = binding.SecretName
+		text["databaseId"] = string(binding.DatabaseInstanceId)
+		text["action"] = string(binding.Meta.Current.Action)
+		text["status"] = string(binding.Meta.Current.State)
+		text["message"] = binding.Meta.Current.Message
+
+		lines = append(lines, text)
+	}
+
+	return lines
+}
+
+func displayInstances(instances []db.DatabaseInstance) []map[string]string {
+	lines := make([]map[string]string, 1)
+
+	for _, instance := range instances {
+
+		text := make(map[string]string)
+
+		text["id"] = instance.K8sName
+		text["namespace"] = instance.Namespace
+		text["databaseName"] = instance.DatabaseName
+		text["dbmsServer"] = string(instance.DbmsServer)
+		text["action"] = string(instance.Meta.Current.Action)
+		text["status"] = string(instance.Meta.Current.State)
+		text["message"] = instance.Meta.Current.Message
+
+		lines = append(lines, text)
+	}
+
+	return lines
+}
+
 func (this *RestCommandApi) runServer() {
 	r := gin.New()
 	r.Use(cors.Default())
 	r.GET("/list", func(c *gin.Context) {
 
 		c.JSON(200, gin.H{
-			"instances": this.crdService.FindAllDatabaseInstances(),
-			"bindings":  this.crdService.FindAllDatabaseBindings(),
+			"instances": displayInstances(this.crdService.FindAllDatabaseInstances()),
+			"bindings":  displayBindings(this.crdService.FindAllDatabaseBindings()),
 		})
 	})
 

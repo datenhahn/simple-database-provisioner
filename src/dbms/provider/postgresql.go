@@ -69,6 +69,7 @@ func connect(credentials dbms.DatabaseCredentials) (*sql.DB, error) {
 
 func (this *PostgresqlDbmsProvider) CreateDatabaseInstance(dbmsServerId string, dbmsServerCredentials dbms.DatabaseCredentials, databaseInstanceName string) (dbms.DatabaseCredentials, error) {
 	db, err := connect(dbmsServerCredentials)
+	defer db.Close()
 
 	if err != nil {
 		return dbms.DatabaseCredentials{}, err
@@ -122,11 +123,15 @@ func (this *PostgresqlDbmsProvider) ExistsDatabaseInstance(dbmsServerId string, 
 		return false, err
 	}
 
+	defer db.Close()
+
 	stmt, err := db.Prepare("SELECT 1 FROM pg_database WHERE datname=$1")
 
 	if err != nil {
 		return false, err
 	}
+
+	defer stmt.Close()
 
 	row := stmt.QueryRow(databaseInstanceName)
 
@@ -159,6 +164,7 @@ func (this *PostgresqlDbmsProvider) ExistsDatabaseInstance(dbmsServerId string, 
 func (this *PostgresqlDbmsProvider) DeleteDatabaseInstance(dbmsServerId string, dbmsServerCredentials dbms.DatabaseCredentials, databaseInstanceName string) error {
 
 	db, err := connect(dbmsServerCredentials)
+	defer db.Close()
 
 	if err != nil {
 		return err
@@ -175,8 +181,6 @@ func (this *PostgresqlDbmsProvider) DeleteDatabaseInstance(dbmsServerId string, 
 	if err != nil {
 		return err
 	}
-
-	err = db.Close()
 
 	if err != nil {
 		return err

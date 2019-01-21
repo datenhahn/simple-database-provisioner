@@ -29,6 +29,26 @@ and updating the documentation are missing.
 * DBMS management is (currently) static and requires a pod restart
 * Database Instance and Binding management is dynamic via two Custom Resource Definitions
 
+== Installation
+
+There is a helm chart provided so you can easily install it in your
+cluster.
+
+1. Set up a postgres database server manually somehow and have the
+   credentials ready. The user must be able to create databases and
+   roles.
+2. Create a secret with these credentials. (all values are base64
+   encoded, as usual). See `examples/dev-postgres-secret.yaml` for
+   an example kubernetes resource definition. The **metadata -> name**
+   will be the identifier with which you can later assign some databases
+   onto that dbms server.
+3. Enter the directory `helm/simple-database-provisioner` and execute
+
+     helm -n sdp sync --name "simple-database-provisioner" .
+
+
+Now watch the logs and create/delete some resources (e.g. from the `examples` folder, to verify functionality and to get used to it.
+
 == Configuration
 
 === Application Config File

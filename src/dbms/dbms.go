@@ -22,6 +22,7 @@ import (
 )
 
 // DbmsProvider provides methods for database creation and deletion.
+//go:generate $GOPATH/bin/mockery -name DbmsProvider
 type DbmsProvider interface {
 	// CreateDatabaseInstance creates a new database instance on the dbms server with the
 	// id dbmsServerId and the provided credentials.

@@ -3,4 +3,4 @@ dbmsServers:
     type: postgresql
     fromSecret:
       namespace: default
-      secret: dbms-dev-postgres-secret
+      secret: dbms-local-postgres-secret

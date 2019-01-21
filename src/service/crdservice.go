@@ -22,62 +22,100 @@ import (
 	"time"
 )
 
-type CustomResourceDefinitionService interface {
-	WasProcessed(uid string) bool
-	MarkProcessed(uid string)
+// CustomResourceService handles the creation and deletion of
+// the custom kubernetes resources SimpleDatabaseBinding and
+// SimpleDatabaseInstance.
+//go:generate $GOPATH/bin/mockery -name CustomResourceService
+type CustomResourceService interface {
+	// WasProcessed returns true if an event was already processed
+	WasProcessed(eventId string) bool
+
+	// MarkProcessed adds an eventId to the list of processed events
+	MarkProcessed(eventId string)
+
+	// CreateDatabaseBinding creates a new database binding
 	CreateDatabaseBinding(binding *v1alpha1.SimpleDatabaseBinding) error
-	DeleteDatabaseBinding(bindingId string) error
+
+	// DeleteDatabaseBinding deletes a new database binding
+	DeleteDatabaseBinding(bindingId db.NamespaceUniqueId) error
+
+	// CreateDatabaseInstance creates a new database instance
 	CreateDatabaseInstance(instance *v1alpha1.SimpleDatabaseInstance) error
-	DeleteDatabaseInstance(instanceId string) error
-	UpdateDatabaseBindingState(bindingId string, newState db.State) error
-	UpdateDatabaseInstanceState(instanceId string, newState db.State) error
-	MarkDatabaseInstanceForDeletion(instanceId string) error
-	MarkDatabaseBindingForDeletion(bindingId string) error
-	UpdateDatabaseInstanceCredentials(instanceId string, newCredentials map[string][]byte) error
-	FindDatabaseInstanceById(instanceId string) (db.DatabaseInstance, error)
+
+	// DeleteDatabaseInstance deletes a database instance
+	DeleteDatabaseInstance(instanceId db.NamespaceUniqueId) error
+
+	// UpdateDatabaseBindingState updates a database binding's state
+	UpdateDatabaseBindingState(bindingId db.NamespaceUniqueId, newState db.State) error
+
+	// UpdateDatabaseInstanceState updates a database instance's state
+	UpdateDatabaseInstanceState(instanceId db.NamespaceUniqueId, newState db.State) error
+
+	// MarkDatabaseInstanceForDeletion marks a database instance for deletion
+	MarkDatabaseInstanceForDeletion(instanceId db.NamespaceUniqueId) error
+
+	// MarkDatabaseBindingForDeletion marks a database binding for deletion
+	MarkDatabaseBindingForDeletion(bindingId db.NamespaceUniqueId) error
+
+	// UpdateDatabaseInstanceCredentials updates a database instance's credentials in the database
+	UpdateDatabaseInstanceCredentials(instanceId db.NamespaceUniqueId, newCredentials map[string][]byte) error
+
+	// FindDatabaseInstanceById finds a database instance with a specific namespace unique id
+	FindDatabaseInstanceById(instanceId db.NamespaceUniqueId) (db.DatabaseInstance, error)
+
+	// FindAllDatabaseInstances returns all database instances
 	FindAllDatabaseInstances() []db.DatabaseInstance
+
+	// FindAllDatabaseBindings returns all database bindings
 	FindAllDatabaseBindings() []db.DatabaseBinding
+
+	// FindInstancesByState returns all database instances in a certain state
 	FindInstancesByState(state db.ProvisioningState) []db.DatabaseInstance
+
+	// FindBindingsByState returns all database bindings in a certain state
 	FindBindingsByState(state db.ProvisioningState) []db.DatabaseBinding
 }
 
-type PersistentCustomResourceDefinitionService struct {
+// PersistentCustomResourceService saves the performed actions in a database
+// as intermediate buffer.
+// The events then have to be processed by another process.
+type PersistentCustomResourceService struct {
 	appDatabase db.AppDatabase
 }
 
-func NewPersistentCustomResourceDefinitionService(database db.AppDatabase) CustomResourceDefinitionService {
-	this := &PersistentCustomResourceDefinitionService{}
+func NewPersistentCustomResourceService(database db.AppDatabase) CustomResourceService {
+	this := &PersistentCustomResourceService{}
 	this.appDatabase = database
 	return this
 }
 
-func (this *PersistentCustomResourceDefinitionService) WasProcessed(uid string) bool {
+func (this *PersistentCustomResourceService) WasProcessed(eventId string) bool {
 
-	return this.appDatabase.WasProcessed(uid)
+	return this.appDatabase.WasProcessed(eventId)
 }
 
-func (this *PersistentCustomResourceDefinitionService) FindAllDatabaseBindings() []db.DatabaseBinding {
+func (this *PersistentCustomResourceService) FindAllDatabaseBindings() []db.DatabaseBinding {
 
 	return this.appDatabase.FindAllDatabaseBindings()
 }
 
-func (this *PersistentCustomResourceDefinitionService) FindAllDatabaseInstances() []db.DatabaseInstance {
+func (this *PersistentCustomResourceService) FindAllDatabaseInstances() []db.DatabaseInstance {
 
 	return this.appDatabase.FindAllDatabaseInstances()
 }
 
-func (this *PersistentCustomResourceDefinitionService) MarkProcessed(uid string) {
+func (this *PersistentCustomResourceService) MarkProcessed(eventId string) {
 
-	this.appDatabase.MarkProcessed(uid)
+	this.appDatabase.MarkProcessed(eventId)
 }
 
-func (this *PersistentCustomResourceDefinitionService) CreateDatabaseBinding(binding *v1alpha1.SimpleDatabaseBinding) error {
+func (this *PersistentCustomResourceService) CreateDatabaseBinding(binding *v1alpha1.SimpleDatabaseBinding) error {
 
 	newBinding := db.DatabaseBinding{
-		Id:                 binding.Name,
+		K8sName:            binding.Name,
 		Namespace:          binding.Namespace,
 		SecretName:         binding.Spec.SecretName,
-		DatabaseInstanceId: binding.Spec.InstanceName,
+		DatabaseInstanceId: db.NewNamespaceUniqueId(binding.Namespace, binding.Spec.InstanceName),
 		Meta: db.Meta{
 			Current: db.State{
 				Action:     db.CREATE,
@@ -91,22 +129,22 @@ func (this *PersistentCustomResourceDefinitionService) CreateDatabaseBinding(bin
 	return this.appDatabase.AddDatabaseBinding(newBinding)
 }
 
-func (this *PersistentCustomResourceDefinitionService) DeleteDatabaseBinding(bindingId string) error {
+func (this *PersistentCustomResourceService) DeleteDatabaseBinding(bindingId db.NamespaceUniqueId) error {
 
 	return this.appDatabase.DeleteDatabaseBinding(bindingId)
 }
 
-func (this *PersistentCustomResourceDefinitionService) DeleteDatabaseInstance(instanceId string) error {
+func (this *PersistentCustomResourceService) DeleteDatabaseInstance(instanceId db.NamespaceUniqueId) error {
 
 	return this.appDatabase.DeleteDatabaseInstance(instanceId)
 }
 
-func (this *PersistentCustomResourceDefinitionService) FindDatabaseInstanceById(instanceId string) (db.DatabaseInstance, error) {
+func (this *PersistentCustomResourceService) FindDatabaseInstanceById(instanceId db.NamespaceUniqueId) (db.DatabaseInstance, error) {
 
 	return this.appDatabase.FindDatabaseInstanceById(instanceId)
 }
 
-func (this *PersistentCustomResourceDefinitionService) MarkDatabaseBindingForDeletion(bindingId string) error {
+func (this *PersistentCustomResourceService) MarkDatabaseBindingForDeletion(bindingId db.NamespaceUniqueId) error {
 
 	newState := db.State{
 		Action:     db.DELETE,
@@ -118,13 +156,13 @@ func (this *PersistentCustomResourceDefinitionService) MarkDatabaseBindingForDel
 	return this.appDatabase.UpdateDatabaseBindingState(bindingId, newState)
 }
 
-func (this *PersistentCustomResourceDefinitionService) UpdateDatabaseBindingState(instanceId string, newState db.State) error {
+func (this *PersistentCustomResourceService) UpdateDatabaseBindingState(instanceId db.NamespaceUniqueId, newState db.State) error {
 
 	return this.appDatabase.UpdateDatabaseBindingState(instanceId, newState)
 
 }
 
-func (this *PersistentCustomResourceDefinitionService) FindInstancesByState(state db.ProvisioningState) []db.DatabaseInstance {
+func (this *PersistentCustomResourceService) FindInstancesByState(state db.ProvisioningState) []db.DatabaseInstance {
 	instances := this.appDatabase.FindAllDatabaseInstances()
 
 	matchingInstances := []db.DatabaseInstance{}
@@ -138,7 +176,7 @@ func (this *PersistentCustomResourceDefinitionService) FindInstancesByState(stat
 	return matchingInstances
 }
 
-func (this *PersistentCustomResourceDefinitionService) FindBindingsByState(state db.ProvisioningState) []db.DatabaseBinding {
+func (this *PersistentCustomResourceService) FindBindingsByState(state db.ProvisioningState) []db.DatabaseBinding {
 	bindings := this.appDatabase.FindAllDatabaseBindings()
 
 	matchingBindings := []db.DatabaseBinding{}
@@ -152,10 +190,11 @@ func (this *PersistentCustomResourceDefinitionService) FindBindingsByState(state
 	return matchingBindings
 }
 
-func (this *PersistentCustomResourceDefinitionService) CreateDatabaseInstance(instance *v1alpha1.SimpleDatabaseInstance) error {
+func (this *PersistentCustomResourceService) CreateDatabaseInstance(instance *v1alpha1.SimpleDatabaseInstance) error {
 
 	newInstance := db.DatabaseInstance{
-		Id:           instance.Name,
+		K8sName:      instance.Name,
+		Namespace:    instance.Namespace,
 		DbmsServer:   instance.Spec.DbmsServer,
 		DatabaseName: instance.Spec.DatabaseName,
 		Meta: db.Meta{
@@ -172,19 +211,19 @@ func (this *PersistentCustomResourceDefinitionService) CreateDatabaseInstance(in
 
 }
 
-func (this *PersistentCustomResourceDefinitionService) UpdateDatabaseInstanceState(instanceId string, newState db.State) error {
+func (this *PersistentCustomResourceService) UpdateDatabaseInstanceState(instanceId db.NamespaceUniqueId, newState db.State) error {
 
 	return this.appDatabase.UpdateDatabaseInstanceState(instanceId, newState)
 
 }
 
-func (this *PersistentCustomResourceDefinitionService) UpdateDatabaseInstanceCredentials(instanceId string, credentials map[string][]byte) error {
+func (this *PersistentCustomResourceService) UpdateDatabaseInstanceCredentials(instanceId db.NamespaceUniqueId, credentials map[string][]byte) error {
 
 	return this.appDatabase.UpdateDatabaseInstanceCredentials(instanceId, credentials)
 
 }
 
-func (this *PersistentCustomResourceDefinitionService) MarkDatabaseInstanceForDeletion(instanceId string) error {
+func (this *PersistentCustomResourceService) MarkDatabaseInstanceForDeletion(instanceId db.NamespaceUniqueId) error {
 
 	newState := db.State{
 		Action:     db.DELETE,
