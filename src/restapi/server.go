@@ -51,7 +51,7 @@ func displayBindings(bindings []db.DatabaseBinding) []map[string]string {
 
 		text := make(map[string]string)
 
-		text["id"] = binding.K8sName
+		text["id"] = string(binding.NamespaceUniqueId())
 		text["namespace"] = binding.Namespace
 		text["secret"] = binding.SecretName
 		text["databaseId"] = string(binding.DatabaseInstanceId)
@@ -72,7 +72,7 @@ func displayInstances(instances []db.DatabaseInstance) []map[string]string {
 
 		text := make(map[string]string)
 
-		text["id"] = instance.K8sName
+		text["id"] = string(instance.NamespaceUniqueId())
 		text["namespace"] = instance.Namespace
 		text["databaseName"] = instance.DatabaseName
 		text["dbmsServer"] = string(instance.DbmsServer)

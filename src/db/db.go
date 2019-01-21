@@ -232,8 +232,8 @@ func (this *YamlAppDatabase) AddDatabaseBinding(binding DatabaseBinding) error {
 	}
 
 	for _, dbBinding := range data.DatabaseBindings {
-		if dbBinding.K8sName == binding.K8sName {
-			logrus.Debugf("Binding with id '%s' already exists, skipping", dbBinding.K8sName)
+		if dbBinding.NamespaceUniqueId() == binding.NamespaceUniqueId() {
+			logrus.Debugf("Binding with id '%s' already exists, skipping", dbBinding.NamespaceUniqueId())
 			return nil
 		}
 	}
@@ -262,7 +262,7 @@ func (this *YamlAppDatabase) UpdateDatabaseBindingState(bindingId NamespaceUniqu
 			data.DatabaseBindings[index].Meta.Previous = dbBinding.Meta.Current
 			data.DatabaseBindings[index].Meta.Current = newState
 
-			logrus.Debugf("Updated state for binding with id '%s' : %s", dbBinding.K8sName, newState.String())
+			logrus.Debugf("Updated state for binding with id '%s' : %s", dbBinding.NamespaceUniqueId(), newState.String())
 		}
 	}
 
@@ -312,8 +312,8 @@ func (this *YamlAppDatabase) AddDatabaseInstance(instance DatabaseInstance) erro
 	}
 
 	for _, dbInstance := range data.DatabaseInstances {
-		if dbInstance.K8sName == instance.K8sName {
-			logrus.Debugf("Binding with id '%s' already exists, skipping", dbInstance.K8sName)
+		if dbInstance.NamespaceUniqueId() == instance.NamespaceUniqueId() {
+			logrus.Debugf("Binding with id '%s' already exists, skipping", dbInstance.NamespaceUniqueId())
 			return nil
 		}
 	}
@@ -342,7 +342,7 @@ func (this *YamlAppDatabase) UpdateDatabaseInstanceState(instanceId NamespaceUni
 			data.DatabaseInstances[index].Meta.Previous = dbInstance.Meta.Current
 			data.DatabaseInstances[index].Meta.Current = newState
 
-			logrus.Debugf("Updated state for binding with id '%s' : %s", dbInstance.K8sName, newState.String())
+			logrus.Debugf("Updated state for binding with id '%s' : %s", dbInstance.NamespaceUniqueId(), newState.String())
 		}
 	}
 

@@ -281,7 +281,7 @@ func (this *PollingEventProcessor) processBinding(binding db.DatabaseBinding) {
 
 	if binding.Meta.Current.Action == db.CREATE {
 
-		dbInstance, err := this.crdService.FindDatabaseInstanceById(binding.NamespaceUniqueId())
+		dbInstance, err := this.crdService.FindDatabaseInstanceById(binding.DatabaseInstanceId)
 
 		if err != nil {
 
