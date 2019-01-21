@@ -18,6 +18,7 @@ package restapi
 
 import (
 	"github.com/gin-contrib/cors"
+	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
 	"simple-database-provisioner/src/db"
 	"simple-database-provisioner/src/service"
@@ -45,7 +46,7 @@ func (this *RestCommandApi) RunServer() {
 }
 
 func displayBindings(bindings []db.DatabaseBinding) []map[string]string {
-	lines := make([]map[string]string, 1)
+	lines := []map[string]string{}
 
 	for _, binding := range bindings {
 
@@ -66,7 +67,7 @@ func displayBindings(bindings []db.DatabaseBinding) []map[string]string {
 }
 
 func displayInstances(instances []db.DatabaseInstance) []map[string]string {
-	lines := make([]map[string]string, 1)
+	lines := []map[string]string{}
 
 	for _, instance := range instances {
 
@@ -89,6 +90,7 @@ func displayInstances(instances []db.DatabaseInstance) []map[string]string {
 func (this *RestCommandApi) runServer() {
 	r := gin.New()
 	r.Use(cors.Default())
+	r.Use(static.Serve("/", static.LocalFile("webui", false)))
 	r.GET("/list", func(c *gin.Context) {
 
 		c.JSON(200, gin.H{
