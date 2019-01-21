@@ -14,6 +14,7 @@ RUN mkdir -p /persistence && mkdir -p /app/crds
 WORKDIR /app/
 RUN touch /app/config.yaml
 COPY crds ./crds
+COPY webui ./webui
 COPY --from=0 /go/bin/controller .
 RUN chown -R appuser:appuser /app && chown -R appuser:appuser /persistence
 USER appuser
