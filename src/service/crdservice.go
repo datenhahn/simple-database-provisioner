@@ -45,19 +45,40 @@ type CustomResourceService interface {
 	// DeleteDatabaseInstance deletes a database instance
 	DeleteDatabaseInstance(instanceId db.NamespaceUniqueId) error
 
-	// UpdateDatabaseBindingState updates
+	// UpdateDatabaseBindingState updates a database binding's state
 	UpdateDatabaseBindingState(bindingId db.NamespaceUniqueId, newState db.State) error
+
+	// UpdateDatabaseInstanceState updates a database instance's state
 	UpdateDatabaseInstanceState(instanceId db.NamespaceUniqueId, newState db.State) error
+
+	// MarkDatabaseInstanceForDeletion marks a database instance for deletion
 	MarkDatabaseInstanceForDeletion(instanceId db.NamespaceUniqueId) error
+
+	// MarkDatabaseBindingForDeletion marks a database binding for deletion
 	MarkDatabaseBindingForDeletion(bindingId db.NamespaceUniqueId) error
+
+	// UpdateDatabaseInstanceCredentials updates a database instance's credentials in the database
 	UpdateDatabaseInstanceCredentials(instanceId db.NamespaceUniqueId, newCredentials map[string][]byte) error
+
+	// FindDatabaseInstanceById finds a database instance with a specific namespace unique id
 	FindDatabaseInstanceById(instanceId db.NamespaceUniqueId) (db.DatabaseInstance, error)
+
+	// FindAllDatabaseInstances returns all database instances
 	FindAllDatabaseInstances() []db.DatabaseInstance
+
+	// FindAllDatabaseBindings returns all database bindings
 	FindAllDatabaseBindings() []db.DatabaseBinding
+
+	// FindInstancesByState returns all database instances in a certain state
 	FindInstancesByState(state db.ProvisioningState) []db.DatabaseInstance
+
+	// FindBindingsByState returns all database bindings in a certain state
 	FindBindingsByState(state db.ProvisioningState) []db.DatabaseBinding
 }
 
+// PersistentCustomResourceService saves the performed actions in a database
+// as intermediate buffer.
+// The events then have to be processed by another process.
 type PersistentCustomResourceService struct {
 	appDatabase db.AppDatabase
 }
