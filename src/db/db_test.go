@@ -14,31 +14,27 @@
  * limitations under the License.
  */
 
-package util
+package db
 
 import (
-	"crypto/md5"
-	"fmt"
-	"math/rand"
-	"strings"
-	"time"
+	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
-func GeneratePassword(length int) string {
-	rand.Seed(time.Now().UnixNano())
-	chars := []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
-	var b strings.Builder
-	for i := 0; i < length; i++ {
-		b.WriteRune(chars[rand.Intn(len(chars))])
+func TestDatabaseInstance_PrefixedDatabaseName(t *testing.T) {
+
+	longInstance := DatabaseInstance{
+		Namespace:    "mysuperlongnamespacename",
+		DatabaseName: "and-my-even-much-much-much-longer-even-much-much-longer-and-lon",
 	}
-	str := b.String()
-	return str
-}
 
-func Md5(input string) string {
-	return fmt.Sprintf("%x", md5.Sum([]byte(input)))
-}
+	assert.Equal(t, "mysuperlongnamespacename-and-my-even-much-much-much-lo-8157f301", longInstance.PrefixedDatabaseName())
+	t.Log(longInstance.PrefixedDatabaseName())
 
-func Md5Short(input string) string {
-	return Md5(input)[:8]
+	shortInstance := DatabaseInstance{
+		Namespace:    "shortns",
+		DatabaseName: "short-db",
+	}
+
+	assert.Equal(t, "shortns-short-db-34ebb06c", shortInstance.PrefixedDatabaseName())
 }

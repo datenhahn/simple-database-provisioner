@@ -22,6 +22,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	"os"
+	"simple-database-provisioner/src/util"
 	"sync"
 	"time"
 )
@@ -73,7 +74,18 @@ type DatabaseInstance struct {
 }
 
 func (this DatabaseInstance) PrefixedDatabaseName() string {
-	return fmt.Sprintf("%s-%s", this.Namespace, this.DatabaseName)
+
+	fullName := fmt.Sprintf("%s-%s", this.Namespace, this.DatabaseName)
+
+	sliceEnd := 54
+
+	if len(fullName) < 54 {
+		sliceEnd = len(fullName)
+	}
+
+	safeName := fmt.Sprintf("%s-%s", fullName[:sliceEnd], util.Md5Short(fullName))
+
+	return safeName
 }
 
 func (this DatabaseInstance) NamespaceUniqueId() NamespaceUniqueId {
