@@ -84,6 +84,7 @@ func main() {
 	databaseFile := flag.String("databaseFile", "/persistence/database.yaml", "the database file where all state is stored in")
 	crdPath := flag.String("crdPath", "/app/crds", "path to the simpledatabasebinding.yaml and simpledatabaseinstance.yaml custom resource definitions")
 	logLevel := flag.String("logLevel", "info", "the log level (e.g. info, debug)")
+	htmlPath := flag.String("htmlPath", "/app/html", "the path to the webui html directory (will be served as /)")
 
 	flag.Parse()
 
@@ -106,6 +107,17 @@ func main() {
 		envLogLevel := os.Getenv("SIMPLEDATABASEPROVISIONER_LOGLEVEL")
 		logLevel = &envLogLevel
 	}
+
+	if os.Getenv("SIMPLEDATABASEPROVISIONER_HTMLPATH") != "" {
+		envHtmlPath := os.Getenv("SIMPLEDATABASEPROVISIONER_HTMLPATH")
+		htmlPath = &envHtmlPath
+	}
+
+	logrus.Infof("configFile: %s", *configFile)
+	logrus.Infof("databaseFile: %s", *databaseFile)
+	logrus.Infof("crdPath: %s", *crdPath)
+	logrus.Infof("logLevel: %s", *logLevel)
+	logrus.Infof("htmlPath: %s", *htmlPath)
 
 	level, err := logrus.ParseLevel(*logLevel)
 
@@ -172,7 +184,7 @@ func main() {
 
 	commandApi := restapi.NewRestCommandApi(crdService)
 
-	commandApi.RunServer()
+	commandApi.RunServer(*htmlPath)
 
 	go func() {
 		for {

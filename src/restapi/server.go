@@ -25,7 +25,7 @@ import (
 )
 
 type CommandApi interface {
-	RunServer()
+	RunServer(htmlPath string)
 }
 
 type RestCommandApi struct {
@@ -41,8 +41,8 @@ func NewRestCommandApi(crdService service.CustomResourceService) CommandApi {
 	return this
 }
 
-func (this *RestCommandApi) RunServer() {
-	go this.runServer()
+func (this *RestCommandApi) RunServer(htmlPath string) {
+	go this.runServer(htmlPath)
 }
 
 func displayBindings(bindings []db.DatabaseBinding) []map[string]string {
@@ -87,10 +87,10 @@ func displayInstances(instances []db.DatabaseInstance) []map[string]string {
 	return lines
 }
 
-func (this *RestCommandApi) runServer() {
+func (this *RestCommandApi) runServer(htmlPath string) {
 	r := gin.New()
 	r.Use(cors.Default())
-	r.Use(static.Serve("/", static.LocalFile("webui", false)))
+	r.Use(static.Serve("/", static.LocalFile(htmlPath, false)))
 	r.GET("/list", func(c *gin.Context) {
 
 		c.JSON(200, gin.H{
