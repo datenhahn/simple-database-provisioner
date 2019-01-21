@@ -3,7 +3,7 @@ containerPort: 8080
 
 image:
   name: ecodia/simple-database-provisioner
-  tag: latest
+  tag: v0.1.0
   pullPolicy: Always
 
 serviceType: ClusterIP
