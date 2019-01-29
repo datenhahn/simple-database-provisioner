@@ -79,7 +79,7 @@ func (this *PostgresqlDbmsProvider) CreateDatabaseInstance(dbmsServerId string, 
 		return dbms.DatabaseCredentials{}, fmt.Errorf("Database name '%s' must match regex: %s", databaseInstanceName, DBNAME_REGEX)
 	}
 
-	_, err = db.Exec(fmt.Sprintf("CREATE DATABASE \"%s\"", databaseInstanceName))
+	_, err = db.Exec(fmt.Sprintf("CREATE DATABASE %s", QuoteIdentifier(databaseInstanceName)))
 
 	if err != nil {
 		return dbms.DatabaseCredentials{}, fmt.Errorf("Error executing 'CREATE DATABASE ...': %v - databaseInstance=%s - dbmsCreds=%s", err, databaseInstanceName, dbmsServerCredentials.String())
@@ -165,6 +165,14 @@ func (this *PostgresqlDbmsProvider) DeleteDatabaseInstance(dbmsServerId string, 
 
 	db, err := connect(dbmsServerCredentials)
 	defer db.Close()
+
+	if err != nil {
+		return err
+	}
+
+	// First we must close all connections to the database, otherwise the drop will fail
+
+	_, err = db.Query(fmt.Sprintf("SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = %s", QuoteValue(databaseInstanceName)))
 
 	if err != nil {
 		return err

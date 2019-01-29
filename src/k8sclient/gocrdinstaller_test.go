@@ -80,13 +80,13 @@ func TestGoCustomResourceDefinitionInstaller_InstallCustomResourceDefinition(t *
 
 	crdInstaller := NewGoCustomResourceDefinitionManager(false)
 
-	crdInstaller.deleteCustomResourceDefinition(SDP_BINDINGS_FQDN)
-	crdInstaller.deleteCustomResourceDefinition(SDP_INSTANCES_FQDN)
+	err := crdInstaller.deleteCustomResourceDefinition(SDP_BINDINGS_FQDN)
+	err = crdInstaller.deleteCustomResourceDefinition(SDP_INSTANCES_FQDN)
 
 	assert.False(t, crdInstaller.isCustomResourceDefinitionInstalled(SDP_BINDINGS_FQDN))
 	assert.False(t, crdInstaller.isCustomResourceDefinitionInstalled(SDP_INSTANCES_FQDN))
 
-	err := crdInstaller.InstallCustomResourceDefinition("../../crds/simpledatabasebinding.yaml")
+	err = crdInstaller.InstallCustomResourceDefinition("../../crds/simpledatabasebinding.yaml")
 	assert.Nil(t, err)
 
 	err2 := crdInstaller.InstallCustomResourceDefinition("../../crds/simpledatabaseinstance.yaml")
