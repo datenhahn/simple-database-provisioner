@@ -2,7 +2,7 @@
 
 set -e
 
-APPVERSION=v0.1.1
+APPVERSION=v0.1.2
 
 docker build . -t ecodia/simple-database-provisioner
 
