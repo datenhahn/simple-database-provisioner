@@ -94,10 +94,10 @@ func (this *PostgresqlDbmsProvider) CreateDatabaseInstance(dbmsServerId string, 
 	instanceCreds.User = fmt.Sprintf("%s@%s", databaseInstanceName, instanceCreds.Host)
 	instanceCreds.Dbname = databaseInstanceName
 
-	_, err = db.Exec(fmt.Sprintf("CREATE ROLE %s WITH PASSWORD %s LOGIN VALID UNTIL 'infinity';", QuoteIdentifier(databaseInstanceName), QuoteValue(passwd)))
+	_, err = db.Exec(fmt.Sprintf("CREATE USER %s WITH PASSWORD %s LOGIN VALID UNTIL 'infinity';", QuoteIdentifier(databaseInstanceName), QuoteValue(passwd)))
 
 	if err != nil {
-		return dbms.DatabaseCredentials{}, fmt.Errorf("Error executing 'CREATE ROLE ...': %v - databaseInstance=%s - dbmsCreds=%s", err, QuoteIdentifier(databaseInstanceName), dbmsServerCredentials.String())
+		return dbms.DatabaseCredentials{}, fmt.Errorf("Error executing 'CREATE USER ...': %v - databaseInstance=%s - dbmsCreds=%s", err, QuoteIdentifier(databaseInstanceName), dbmsServerCredentials.String())
 	}
 
 	_, err = db.Query(fmt.Sprintf("GRANT ALL PRIVILEGES ON DATABASE %s TO %s;", QuoteIdentifier(databaseInstanceName), QuoteIdentifier(databaseInstanceName)))

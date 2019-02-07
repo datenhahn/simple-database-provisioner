@@ -147,7 +147,9 @@ func main() {
 
 	appDb := db.NewYamlAppDatabase(*databaseFile)
 	crdService := service.NewPersistentCustomResourceService(appDb)
-	crdEventHandler := events.NewGoSimpleDatabaseProvisionerEventHandler(crdService)
+	postgresProvider := &provider.PostgresqlDbmsProvider{}
+	iteratingProcessor := events.NewDatabaseIteratingEventProcessor(10*time.Second, myConfig, crdService, client, []dbms.DbmsProvider{postgresProvider})
+	crdEventHandler := events.NewGoSimpleDatabaseProvisionerEventHandler(crdService, iteratingProcessor)
 
 	eventHandler := cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
@@ -176,20 +178,21 @@ func main() {
 		},
 	}
 
-	postgresProvider := &provider.PostgresqlDbmsProvider{}
-
-	pollingProcessor := events.NewPollingEventProcessor(10*time.Second, myConfig, crdService, client, []dbms.DbmsProvider{postgresProvider})
-
 	logrus.Info("Starting polling with interval 10 secs ...")
 
 	commandApi := restapi.NewRestCommandApi(crdService)
 
 	commandApi.RunServer(*htmlPath)
 
+	// Just to be sure we don't miss any events due to killed go routines (e.g. during a restart)
+	// we ensure the processing iteration is done at least every 10 seconds.
+
+	pollingInterval := time.Second * 10
+
 	go func() {
 		for {
-			pollingProcessor.ProcessEvents()
-			time.Sleep(10 * time.Second)
+			iteratingProcessor.ProcessEvents()
+			time.Sleep(pollingInterval)
 		}
 	}()
 
