@@ -25,9 +25,11 @@ import (
 	"simple-database-provisioner/src/k8sclient"
 	"simple-database-provisioner/src/service"
 	"strings"
+	"sync"
 	"time"
 )
 
+//go:generate $GOPATH/bin/mockery -name ProvisioningEventProcessor
 type ProvisioningEventProcessor interface {
 	ProcessEvents()
 }
@@ -38,9 +40,10 @@ type PollingEventProcessor struct {
 	crdService    service.CustomResourceService
 	dbmsProviders []dbms.DbmsProvider
 	apiclient     k8sclient.K8sClient
+	mutex         sync.Mutex
 }
 
-func NewPollingEventProcessor(pollInterval time.Duration,
+func NewDatabaseIteratingEventProcessor(pollInterval time.Duration,
 	appConfig config.AppConfig, crdService service.CustomResourceService, apiclient k8sclient.K8sClient, dbmsProviders []dbms.DbmsProvider) ProvisioningEventProcessor {
 	this := &PollingEventProcessor{}
 
@@ -396,6 +399,9 @@ func (this *PollingEventProcessor) processBinding(binding db.DatabaseBinding) {
 }
 
 func (this *PollingEventProcessor) ProcessEvents() {
+
+	this.mutex.Lock()
+	defer this.mutex.Unlock()
 
 	// first try to reprocess error instances
 	errorInstances := this.crdService.FindInstancesByState(db.ERROR)

@@ -35,11 +35,19 @@ const (
 	DELETE ProvisioningAction = "delete"
 )
 
+func (this ProvisioningAction) String() string {
+	return string(this)
+}
+
 const (
 	PENDING ProvisioningState = "pending"
 	READY   ProvisioningState = "ready"
 	ERROR   ProvisioningState = "error"
 )
+
+func (this ProvisioningState) String() string {
+	return string(this)
+}
 
 type State struct {
 	Action     ProvisioningAction
@@ -245,8 +253,21 @@ func (this *YamlAppDatabase) AddDatabaseBinding(binding DatabaseBinding) error {
 
 	for _, dbBinding := range data.DatabaseBindings {
 		if dbBinding.NamespaceUniqueId() == binding.NamespaceUniqueId() {
-			logrus.Debugf("Binding with id '%s' already exists, skipping", dbBinding.NamespaceUniqueId())
-			return nil
+			if dbBinding.Meta.Current.Action == binding.Meta.Current.Action {
+				logrus.Debugf("Binding with id '%s' already exists, skipping action '%s'", dbBinding.NamespaceUniqueId(), binding.Meta.Current.Action)
+				return nil
+			} else {
+				err := this.deleteDatabaseBindingNoLock(dbBinding.NamespaceUniqueId())
+				if err != nil {
+					return err
+				}
+
+				data, err = this.load()
+				if err != nil {
+					return err
+				}
+
+			}
 		}
 	}
 
@@ -284,10 +305,7 @@ func (this *YamlAppDatabase) UpdateDatabaseBindingState(bindingId NamespaceUniqu
 
 }
 
-func (this *YamlAppDatabase) DeleteDatabaseBinding(bindingId NamespaceUniqueId) error {
-
-	this.mutex.Lock()
-	defer this.mutex.Unlock()
+func (this *YamlAppDatabase) deleteDatabaseBindingNoLock(bindingId NamespaceUniqueId) error {
 
 	data, err := this.load()
 
@@ -312,6 +330,15 @@ func (this *YamlAppDatabase) DeleteDatabaseBinding(bindingId NamespaceUniqueId) 
 
 }
 
+func (this *YamlAppDatabase) DeleteDatabaseBinding(bindingId NamespaceUniqueId) error {
+
+	this.mutex.Lock()
+	defer this.mutex.Unlock()
+
+	return this.deleteDatabaseBindingNoLock(bindingId)
+
+}
+
 func (this *YamlAppDatabase) AddDatabaseInstance(instance DatabaseInstance) error {
 
 	this.mutex.Lock()
@@ -325,8 +352,24 @@ func (this *YamlAppDatabase) AddDatabaseInstance(instance DatabaseInstance) erro
 
 	for _, dbInstance := range data.DatabaseInstances {
 		if dbInstance.NamespaceUniqueId() == instance.NamespaceUniqueId() {
-			logrus.Debugf("Binding with id '%s' already exists, skipping", dbInstance.NamespaceUniqueId())
-			return nil
+
+			if dbInstance.Meta.Current.Action == instance.Meta.Current.Action {
+
+				logrus.Debugf("Binding with id '%s' already exists, skipping", dbInstance.NamespaceUniqueId())
+				return nil
+			} else {
+				err := this.deleteDatabaseInstanceNoLock(dbInstance.NamespaceUniqueId())
+				if err != nil {
+					return err
+				}
+
+				data, err = this.load()
+				if err != nil {
+					return err
+				}
+
+			}
+
 		}
 	}
 
@@ -385,10 +428,8 @@ func (this *YamlAppDatabase) UpdateDatabaseInstanceCredentials(instanceId Namesp
 
 	return err
 }
-func (this *YamlAppDatabase) DeleteDatabaseInstance(instanceId NamespaceUniqueId) error {
 
-	this.mutex.Lock()
-	defer this.mutex.Unlock()
+func (this *YamlAppDatabase) deleteDatabaseInstanceNoLock(instanceId NamespaceUniqueId) error {
 
 	data, err := this.load()
 
@@ -411,6 +452,14 @@ func (this *YamlAppDatabase) DeleteDatabaseInstance(instanceId NamespaceUniqueId
 
 	return err
 
+}
+
+func (this *YamlAppDatabase) DeleteDatabaseInstance(instanceId NamespaceUniqueId) error {
+
+	this.mutex.Lock()
+	defer this.mutex.Unlock()
+
+	return this.deleteDatabaseInstanceNoLock(instanceId)
 }
 
 func (this *YamlAppDatabase) load() (DbData, error) {

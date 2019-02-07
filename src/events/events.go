@@ -33,16 +33,18 @@ type SimpleDatabaseProvisionerEventHandler interface {
 
 type GoSimpleDatabaseProvisionerEventHandler struct {
 	crdService service.CustomResourceService
+	processor  ProvisioningEventProcessor
 }
 
 func createEventId(action, objectUid string) string {
 	return fmt.Sprintf("%s-%s", action, objectUid)
 }
 
-func NewGoSimpleDatabaseProvisionerEventHandler(crdService service.CustomResourceService) SimpleDatabaseProvisionerEventHandler {
+func NewGoSimpleDatabaseProvisionerEventHandler(crdService service.CustomResourceService, processor ProvisioningEventProcessor) SimpleDatabaseProvisionerEventHandler {
 
 	this := &GoSimpleDatabaseProvisionerEventHandler{}
 	this.crdService = crdService
+	this.processor = processor
 
 	return this
 }
@@ -65,6 +67,8 @@ func (this *GoSimpleDatabaseProvisionerEventHandler) OnAddDatabaseBinding(bindin
 	}
 
 	this.crdService.MarkProcessed(eventId)
+
+	go this.processor.ProcessEvents()
 }
 
 func (this *GoSimpleDatabaseProvisionerEventHandler) OnDeleteDatabaseBinding(binding *v1alpha1.SimpleDatabaseBinding) {
@@ -85,6 +89,8 @@ func (this *GoSimpleDatabaseProvisionerEventHandler) OnDeleteDatabaseBinding(bin
 	}
 
 	this.crdService.MarkProcessed(eventId)
+
+	go this.processor.ProcessEvents()
 }
 
 func (this *GoSimpleDatabaseProvisionerEventHandler) OnAddDatabaseInstance(instance *v1alpha1.SimpleDatabaseInstance) {
@@ -106,6 +112,7 @@ func (this *GoSimpleDatabaseProvisionerEventHandler) OnAddDatabaseInstance(insta
 
 	this.crdService.MarkProcessed(eventId)
 
+	go this.processor.ProcessEvents()
 }
 
 func (this *GoSimpleDatabaseProvisionerEventHandler) OnDeleteDatabaseInstance(instance *v1alpha1.SimpleDatabaseInstance) {
@@ -126,4 +133,6 @@ func (this *GoSimpleDatabaseProvisionerEventHandler) OnDeleteDatabaseInstance(in
 	}
 
 	this.crdService.MarkProcessed(eventId)
+
+	go this.processor.ProcessEvents()
 }
