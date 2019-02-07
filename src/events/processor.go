@@ -41,6 +41,9 @@ type PollingEventProcessor struct {
 	dbmsProviders []dbms.DbmsProvider
 	apiclient     k8sclient.K8sClient
 	mutex         sync.Mutex
+	updateLock    chan struct{}
+	spawnLock     chan struct{}
+	running       bool
 }
 
 func NewDatabaseIteratingEventProcessor(pollInterval time.Duration,
@@ -52,8 +55,39 @@ func NewDatabaseIteratingEventProcessor(pollInterval time.Duration,
 	this.crdService = crdService
 	this.dbmsProviders = dbmsProviders
 	this.apiclient = apiclient
+	this.updateLock = make(chan struct{}, 1)
+	this.spawnLock = make(chan struct{})
+
+	go this.spawnUpdateWorker()
+
+	logrus.Debug("Waiting to spawn Update Worker")
+	<-this.spawnLock
+	logrus.Debug("Spawned Update Worker")
 
 	return this
+}
+
+func (this *PollingEventProcessor) spawnUpdateWorker() {
+
+	this.spawnLock <- struct{}{}
+
+	for {
+		logrus.Debug("spawnUpdateWorker blocking until update")
+		<-this.updateLock
+		logrus.Debug("received Update channel event, updating")
+		this.loopElements()
+	}
+
+}
+
+func (this *PollingEventProcessor) ProcessEvents() {
+
+	select {
+	case this.updateLock <- struct{}{}:
+		logrus.Debug("notifyUpdateables: wrote into update channel")
+	default:
+		logrus.Debug("notifyUpdateables: update channel blocked, skipping by default")
+	}
 }
 
 func (this *PollingEventProcessor) getDbmsProvider(dbmsType string) (dbms.DbmsProvider, error) {
@@ -398,10 +432,12 @@ func (this *PollingEventProcessor) processBinding(binding db.DatabaseBinding) {
 
 }
 
-func (this *PollingEventProcessor) ProcessEvents() {
+func (this *PollingEventProcessor) loopElements() {
 
 	this.mutex.Lock()
 	defer this.mutex.Unlock()
+
+	logrus.Info("Processloop: CHecking for pending and error elements")
 
 	// first try to reprocess error instances
 	errorInstances := this.crdService.FindInstancesByState(db.ERROR)
