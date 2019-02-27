@@ -41,17 +41,17 @@ var TEST_CREDENTIALS = dbms.DatabaseCredentials{
 // creates a test database and ensures it exists
 func createDatabase(t *testing.T, postgresqlProvider dbms.DbmsProvider, dbname string) {
 
-	cred, err := postgresqlProvider.CreateDatabaseInstance("golang-test-db", TEST_CREDENTIALS, dbname)
+	cred, err := postgresqlProvider.CreateDatabaseInstance("golang-test-persistence", TEST_CREDENTIALS, dbname)
 
 	assert.Nil(t, err)
-	assert.Equal(t, "golang-test-db", cred.Dbname)
-	assert.Equal(t, "golang-test-db@localhost", cred.User)
+	assert.Equal(t, "golang-test-persistence", cred.Dbname)
+	assert.Equal(t, "golang-test-persistence@localhost", cred.User)
 	assert.Equal(t, 5432, cred.Port)
 	assert.Equal(t, "localhost", cred.Host)
 	assert.Equal(t, false, cred.Ssl)
 	assert.NotEqual(t, TEST_CREDENTIALS.Password, cred.Password)
 
-	doesExist, err := postgresqlProvider.ExistsDatabaseInstance("golang-test-db", TEST_CREDENTIALS, "golang-test-db")
+	doesExist, err := postgresqlProvider.ExistsDatabaseInstance("golang-test-persistence", TEST_CREDENTIALS, "golang-test-persistence")
 
 	assert.Nil(t, err)
 	assert.True(t, doesExist)
@@ -60,11 +60,11 @@ func createDatabase(t *testing.T, postgresqlProvider dbms.DbmsProvider, dbname s
 // Deletes the test database and ensures it is deleted
 func deleteDatabase(t *testing.T, postgresqlProvider dbms.DbmsProvider, dbname string) {
 
-	err := postgresqlProvider.DeleteDatabaseInstance("golang-test-db", TEST_CREDENTIALS, "golang-test-db")
+	err := postgresqlProvider.DeleteDatabaseInstance("golang-test-persistence", TEST_CREDENTIALS, "golang-test-persistence")
 
 	assert.Nil(t, err)
 
-	doesExist, err := postgresqlProvider.ExistsDatabaseInstance("golang-test-db", TEST_CREDENTIALS, dbname)
+	doesExist, err := postgresqlProvider.ExistsDatabaseInstance("golang-test-persistence", TEST_CREDENTIALS, dbname)
 
 	assert.Nil(t, err)
 	assert.False(t, doesExist)
@@ -74,7 +74,7 @@ func TestPostgresqlDbmsProvider_CreateDatabaseInstance(t *testing.T) {
 
 	postgresqlProvider := &PostgresqlDbmsProvider{}
 
-	createDatabase(t, postgresqlProvider, "golang-test-db")
-	deleteDatabase(t, postgresqlProvider, "golang-test-db")
+	createDatabase(t, postgresqlProvider, "golang-test-persistence")
+	deleteDatabase(t, postgresqlProvider, "golang-test-persistence")
 
 }

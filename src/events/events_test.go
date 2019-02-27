@@ -23,8 +23,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"os"
 	"simple-database-provisioner/pkg/apis/simpledatabaseprovisioner/v1alpha1"
-	"simple-database-provisioner/src/db"
 	"simple-database-provisioner/src/events/mocks"
+	"simple-database-provisioner/src/persistence"
 	"simple-database-provisioner/src/service"
 	"simple-database-provisioner/src/util"
 	"testing"
@@ -56,40 +56,42 @@ func TestEventHandler_fast_subsequent_binding_add_and_removes(t *testing.T) {
 	os.Remove(dbName)
 	defer os.Remove(dbName)
 
-	yamlDb := db.NewYamlAppDatabase(dbName)
+	yamlDb := persistence.NewYamlAppDatabase(dbName)
 
 	processor := &mocks.ProvisioningEventProcessor{}
 	processor.On("ProcessEvents").Return()
 
-	crdService := service.NewPersistentCustomResourceService(yamlDb)
-	handler := NewGoSimpleDatabaseProvisionerEventHandler(crdService, processor)
+	eventService := service.NewPersistentEventService(yamlDb)
+	bindingService := service.NewPersistentDatabaseBindingService(yamlDb)
+	instanceService := service.NewPersistentDatabaseInstanceService(yamlDb)
+	handler := NewGoSimpleDatabaseProvisionerEventHandler(eventService, bindingService, instanceService, processor)
 
 	alpha := createBinding("alpha")
 	alpha2 := createBinding("alpha")
 
 	handler.OnAddDatabaseBinding(alpha)
-	bindings := crdService.FindAllDatabaseBindings()
+	bindings := bindingService.FindAllDatabaseBindings()
 	assert.Equal(t, alpha.Name, bindings[0].K8sName)
-	assert.Equal(t, string(db.CREATE), string(bindings[0].Meta.Current.Action))
-	assert.Equal(t, string(db.PENDING), string(bindings[0].Meta.Current.State))
+	assert.Equal(t, string(persistence.CREATE), string(bindings[0].Meta.Current.Action))
+	assert.Equal(t, string(persistence.PENDING), string(bindings[0].Meta.Current.State))
 
 	handler.OnDeleteDatabaseBinding(alpha)
-	bindings = crdService.FindAllDatabaseBindings()
+	bindings = bindingService.FindAllDatabaseBindings()
 	assert.Equal(t, alpha.Name, bindings[0].K8sName)
-	assert.Equal(t, string(db.DELETE), string(bindings[0].Meta.Current.Action))
-	assert.Equal(t, string(db.PENDING), string(bindings[0].Meta.Current.State))
+	assert.Equal(t, string(persistence.DELETE), string(bindings[0].Meta.Current.Action))
+	assert.Equal(t, string(persistence.PENDING), string(bindings[0].Meta.Current.State))
 
 	handler.OnAddDatabaseBinding(alpha2)
-	bindings = crdService.FindAllDatabaseBindings()
+	bindings = bindingService.FindAllDatabaseBindings()
 	assert.Equal(t, alpha2.Name, bindings[0].K8sName)
-	assert.Equal(t, string(db.CREATE), string(bindings[0].Meta.Current.Action))
-	assert.Equal(t, string(db.PENDING), string(bindings[0].Meta.Current.State))
+	assert.Equal(t, string(persistence.CREATE), string(bindings[0].Meta.Current.Action))
+	assert.Equal(t, string(persistence.PENDING), string(bindings[0].Meta.Current.State))
 
 	handler.OnDeleteDatabaseBinding(alpha2)
-	bindings = crdService.FindAllDatabaseBindings()
+	bindings = bindingService.FindAllDatabaseBindings()
 	assert.Equal(t, alpha2.Name, bindings[0].K8sName)
-	assert.Equal(t, string(db.DELETE), string(bindings[0].Meta.Current.Action))
-	assert.Equal(t, string(db.PENDING), string(bindings[0].Meta.Current.State))
+	assert.Equal(t, string(persistence.DELETE), string(bindings[0].Meta.Current.Action))
+	assert.Equal(t, string(persistence.PENDING), string(bindings[0].Meta.Current.State))
 
 }
 
@@ -100,33 +102,35 @@ func TestEventHandler_fast_subsequent_instance_add_and_removes(t *testing.T) {
 	os.Remove(dbName)
 	defer os.Remove(dbName)
 
-	yamlDb := db.NewYamlAppDatabase(dbName)
+	yamlDb := persistence.NewYamlAppDatabase(dbName)
 
 	processor := &mocks.ProvisioningEventProcessor{}
 	processor.On("ProcessEvents").Return()
 
-	crdService := service.NewPersistentCustomResourceService(yamlDb)
-	handler := NewGoSimpleDatabaseProvisionerEventHandler(crdService, processor)
+	eventService := service.NewPersistentEventService(yamlDb)
+	bindingService := service.NewPersistentDatabaseBindingService(yamlDb)
+	instanceService := service.NewPersistentDatabaseInstanceService(yamlDb)
+	handler := NewGoSimpleDatabaseProvisionerEventHandler(eventService, bindingService, instanceService, processor)
 
 	beta := createInstance("beta")
 	beta2 := createInstance("beta")
 
 	handler.OnAddDatabaseInstance(beta)
-	instances := crdService.FindAllDatabaseInstances()
+	instances := instanceService.FindAllDatabaseInstances()
 	assert.Equal(t, beta.Name, instances[0].K8sName)
-	assert.Equal(t, string(db.CREATE), string(instances[0].Meta.Current.Action))
-	assert.Equal(t, string(db.PENDING), string(instances[0].Meta.Current.State))
+	assert.Equal(t, string(persistence.CREATE), string(instances[0].Meta.Current.Action))
+	assert.Equal(t, string(persistence.PENDING), string(instances[0].Meta.Current.State))
 
 	handler.OnDeleteDatabaseInstance(beta)
-	instances = crdService.FindAllDatabaseInstances()
+	instances = instanceService.FindAllDatabaseInstances()
 	assert.Equal(t, beta.Name, instances[0].K8sName)
-	assert.Equal(t, string(db.DELETE), string(instances[0].Meta.Current.Action))
-	assert.Equal(t, string(db.PENDING), string(instances[0].Meta.Current.State))
+	assert.Equal(t, string(persistence.DELETE), string(instances[0].Meta.Current.Action))
+	assert.Equal(t, string(persistence.PENDING), string(instances[0].Meta.Current.State))
 
 	handler.OnAddDatabaseInstance(beta2)
-	instances = crdService.FindAllDatabaseInstances()
+	instances = instanceService.FindAllDatabaseInstances()
 	assert.Equal(t, beta2.Name, instances[0].K8sName)
-	assert.Equal(t, string(db.CREATE), string(instances[0].Meta.Current.Action))
-	assert.Equal(t, string(db.PENDING), string(instances[0].Meta.Current.State))
+	assert.Equal(t, string(persistence.CREATE), string(instances[0].Meta.Current.Action))
+	assert.Equal(t, string(persistence.PENDING), string(instances[0].Meta.Current.State))
 
 }

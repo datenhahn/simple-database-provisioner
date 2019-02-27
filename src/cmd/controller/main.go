@@ -26,11 +26,11 @@ import (
 	"path"
 	"simple-database-provisioner/pkg/apis/simpledatabaseprovisioner/v1alpha1"
 	"simple-database-provisioner/src/config"
-	"simple-database-provisioner/src/db"
 	"simple-database-provisioner/src/dbms"
 	"simple-database-provisioner/src/dbms/provider"
 	"simple-database-provisioner/src/events"
 	"simple-database-provisioner/src/k8sclient"
+	"simple-database-provisioner/src/persistence"
 	"simple-database-provisioner/src/restapi"
 	"simple-database-provisioner/src/service"
 	"time"
@@ -145,11 +145,15 @@ func main() {
 
 	client := k8sclient.NewGoK8sClient(insideCluster)
 
-	appDb := db.NewYamlAppDatabase(*databaseFile)
-	crdService := service.NewPersistentCustomResourceService(appDb)
+	appDb := persistence.NewYamlAppDatabase(*databaseFile)
+
+	eventService := service.NewPersistentEventService(appDb)
+	bindingService := service.NewPersistentDatabaseBindingService(appDb)
+	instanceService := service.NewPersistentDatabaseInstanceService(appDb)
+
 	postgresProvider := &provider.PostgresqlDbmsProvider{}
-	iteratingProcessor := events.NewDatabaseIteratingEventProcessor(10*time.Second, myConfig, crdService, client, []dbms.DbmsProvider{postgresProvider})
-	crdEventHandler := events.NewGoSimpleDatabaseProvisionerEventHandler(crdService, iteratingProcessor)
+	iteratingProcessor := events.NewDatabaseIteratingEventProcessor(10*time.Second, myConfig, bindingService, instanceService, client, []dbms.DbmsProvider{postgresProvider})
+	crdEventHandler := events.NewGoSimpleDatabaseProvisionerEventHandler(eventService, bindingService, instanceService, iteratingProcessor)
 
 	eventHandler := cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
@@ -180,7 +184,7 @@ func main() {
 
 	logrus.Info("Starting polling with interval 10 secs ...")
 
-	commandApi := restapi.NewRestCommandApi(crdService)
+	commandApi := restapi.NewRestCommandApi(bindingService, instanceService)
 
 	commandApi.RunServer(*htmlPath)
 

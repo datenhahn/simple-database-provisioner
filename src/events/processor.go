@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"github.com/sirupsen/logrus"
 	"simple-database-provisioner/src/config"
-	"simple-database-provisioner/src/db"
 	"simple-database-provisioner/src/dbms"
 	"simple-database-provisioner/src/k8sclient"
+	"simple-database-provisioner/src/persistence"
 	"simple-database-provisioner/src/service"
 	"strings"
 	"sync"
@@ -35,24 +35,26 @@ type ProvisioningEventProcessor interface {
 }
 
 type PollingEventProcessor struct {
-	pollInterval  time.Duration
-	appConfig     config.AppConfig
-	crdService    service.CustomResourceService
-	dbmsProviders []dbms.DbmsProvider
-	apiclient     k8sclient.K8sClient
-	mutex         sync.Mutex
-	updateLock    chan struct{}
-	spawnLock     chan struct{}
-	running       bool
+	pollInterval    time.Duration
+	appConfig       config.AppConfig
+	bindingService  service.DatabaseBindingService
+	instanceService service.DatabaseInstanceService
+	dbmsProviders   []dbms.DbmsProvider
+	apiclient       k8sclient.K8sClient
+	mutex           sync.Mutex
+	updateLock      chan struct{}
+	spawnLock       chan struct{}
+	running         bool
 }
 
 func NewDatabaseIteratingEventProcessor(pollInterval time.Duration,
-	appConfig config.AppConfig, crdService service.CustomResourceService, apiclient k8sclient.K8sClient, dbmsProviders []dbms.DbmsProvider) ProvisioningEventProcessor {
+	appConfig config.AppConfig, bindingService service.DatabaseBindingService, instanceService service.DatabaseInstanceService, apiclient k8sclient.K8sClient, dbmsProviders []dbms.DbmsProvider) ProvisioningEventProcessor {
 	this := &PollingEventProcessor{}
 
 	this.pollInterval = pollInterval
 	this.appConfig = appConfig
-	this.crdService = crdService
+	this.instanceService = instanceService
+	this.bindingService = bindingService
 	this.dbmsProviders = dbmsProviders
 	this.apiclient = apiclient
 	this.updateLock = make(chan struct{}, 1)
@@ -113,27 +115,27 @@ func (this *PollingEventProcessor) getDbmsCredentials(dbmsServer config.DbmsServ
 	return dbms.CreateCredentialsFromSecretData(secret)
 }
 
-func CreateErrorState(action db.ProvisioningAction, message string) db.State {
+func CreateErrorState(action persistence.ProvisioningAction, message string) persistence.State {
 
 	logrus.Errorf("Error: %s", message)
-	return db.State{
-		State:      db.ERROR,
+	return persistence.State{
+		State:      persistence.ERROR,
 		Action:     action,
 		Message:    message,
 		LastUpdate: time.Now().Round(time.Second),
 	}
 }
 
-func CreateOkState(action db.ProvisioningAction) db.State {
-	return db.State{
-		State:      db.READY,
+func CreateOkState(action persistence.ProvisioningAction) persistence.State {
+	return persistence.State{
+		State:      persistence.READY,
 		Action:     action,
 		Message:    "ok",
 		LastUpdate: time.Now().Round(time.Second),
 	}
 }
 
-func (this *PollingEventProcessor) processInstance(instance db.DatabaseInstance) {
+func (this *PollingEventProcessor) processInstance(instance persistence.DatabaseInstance) {
 
 	dbmsServer, err := config.GetDbmsServer(this.appConfig, instance.DbmsServer)
 
@@ -141,7 +143,7 @@ func (this *PollingEventProcessor) processInstance(instance db.DatabaseInstance)
 
 		errorState := CreateErrorState(instance.Meta.Current.Action, err.Error())
 
-		err := this.crdService.UpdateDatabaseInstanceState(instance.NamespaceUniqueId(), errorState)
+		err := this.instanceService.UpdateDatabaseInstanceState(instance.NamespaceUniqueId(), errorState)
 		if err != nil {
 			logrus.Errorf("There was an error updating state of instance: %s", instance.K8sName)
 		}
@@ -154,14 +156,14 @@ func (this *PollingEventProcessor) processInstance(instance db.DatabaseInstance)
 	if err != nil {
 		errorState := CreateErrorState(instance.Meta.Current.Action, err.Error())
 
-		err := this.crdService.UpdateDatabaseInstanceState(instance.NamespaceUniqueId(), errorState)
+		err := this.instanceService.UpdateDatabaseInstanceState(instance.NamespaceUniqueId(), errorState)
 		if err != nil {
 			logrus.Errorf("There was an error updating state of instance: %s", instance.K8sName)
 		}
 		return
 	}
 
-	if instance.Meta.Current.Action == db.CREATE {
+	if instance.Meta.Current.Action == persistence.CREATE {
 
 		credentials, err := this.getDbmsCredentials(dbmsServer)
 
@@ -171,7 +173,7 @@ func (this *PollingEventProcessor) processInstance(instance db.DatabaseInstance)
 
 			errorState := CreateErrorState(instance.Meta.Current.Action, message)
 
-			err := this.crdService.UpdateDatabaseInstanceState(instance.NamespaceUniqueId(), errorState)
+			err := this.instanceService.UpdateDatabaseInstanceState(instance.NamespaceUniqueId(), errorState)
 			if err != nil {
 				logrus.Errorf("There was an error updating state of instance: %s, %v", instance.K8sName, err)
 			}
@@ -186,7 +188,7 @@ func (this *PollingEventProcessor) processInstance(instance db.DatabaseInstance)
 
 			errorState := CreateErrorState(instance.Meta.Current.Action, message)
 
-			err := this.crdService.UpdateDatabaseInstanceState(instance.NamespaceUniqueId(), errorState)
+			err := this.instanceService.UpdateDatabaseInstanceState(instance.NamespaceUniqueId(), errorState)
 			if err != nil {
 				logrus.Errorf("There was an error updating state of instance: %s, %v", instance.K8sName, err)
 			}
@@ -196,8 +198,8 @@ func (this *PollingEventProcessor) processInstance(instance db.DatabaseInstance)
 
 		if exists {
 			newState := CreateOkState(instance.Meta.Current.Action)
-			newState.Message = "Database already existed, keeping existing db"
-			err = this.crdService.UpdateDatabaseInstanceState(instance.NamespaceUniqueId(), newState)
+			newState.Message = "Database already existed, keeping existing persistence"
+			err = this.instanceService.UpdateDatabaseInstanceState(instance.NamespaceUniqueId(), newState)
 			if err != nil {
 				logrus.Errorf("There was an error updating state of instance: %s", instance.K8sName)
 			}
@@ -213,7 +215,7 @@ func (this *PollingEventProcessor) processInstance(instance db.DatabaseInstance)
 
 			errorState := CreateErrorState(instance.Meta.Current.Action, message)
 
-			err := this.crdService.UpdateDatabaseInstanceState(instance.NamespaceUniqueId(), errorState)
+			err := this.instanceService.UpdateDatabaseInstanceState(instance.NamespaceUniqueId(), errorState)
 			if err != nil {
 				logrus.Errorf("There was an error updating state of instance: %s, %v", instance.K8sName, err)
 			}
@@ -227,35 +229,35 @@ func (this *PollingEventProcessor) processInstance(instance db.DatabaseInstance)
 
 			errorState := CreateErrorState(instance.Meta.Current.Action, message)
 
-			err := this.crdService.UpdateDatabaseInstanceState(instance.NamespaceUniqueId(), errorState)
+			err := this.instanceService.UpdateDatabaseInstanceState(instance.NamespaceUniqueId(), errorState)
 			if err != nil {
 				logrus.Errorf("There was an error updating state of instance: %s, %v", instance.K8sName, err)
 			}
 			return
 		}
 
-		err = this.crdService.UpdateDatabaseInstanceCredentials(instance.NamespaceUniqueId(), secretData)
+		err = this.instanceService.UpdateDatabaseInstanceCredentials(instance.NamespaceUniqueId(), secretData)
 
 		if err != nil {
 			message := fmt.Sprintf("Could not update database credentials for instance '%s'", instance.K8sName)
 
 			errorState := CreateErrorState(instance.Meta.Current.Action, message)
 
-			err := this.crdService.UpdateDatabaseInstanceState(instance.NamespaceUniqueId(), errorState)
+			err := this.instanceService.UpdateDatabaseInstanceState(instance.NamespaceUniqueId(), errorState)
 			if err != nil {
 				logrus.Errorf("There was an error updating state of instance: %s", instance.K8sName)
 			}
 			return
 		}
 
-		err = this.crdService.UpdateDatabaseInstanceState(instance.NamespaceUniqueId(), CreateOkState(instance.Meta.Current.Action))
+		err = this.instanceService.UpdateDatabaseInstanceState(instance.NamespaceUniqueId(), CreateOkState(instance.Meta.Current.Action))
 		if err != nil {
 			logrus.Errorf("There was an error updating state of instance: %s", instance.K8sName)
 		}
 
 		logrus.Infof("Successfully created instance: namespace=%s, instance=%s", instance.Namespace, instance.K8sName)
 
-	} else if instance.Meta.Current.Action == db.DELETE {
+	} else if instance.Meta.Current.Action == persistence.DELETE {
 
 		credentials, err := this.getDbmsCredentials(dbmsServer)
 
@@ -265,7 +267,7 @@ func (this *PollingEventProcessor) processInstance(instance db.DatabaseInstance)
 
 			errorState := CreateErrorState(instance.Meta.Current.Action, message)
 
-			err := this.crdService.UpdateDatabaseInstanceState(instance.NamespaceUniqueId(), errorState)
+			err := this.instanceService.UpdateDatabaseInstanceState(instance.NamespaceUniqueId(), errorState)
 			if err != nil {
 				logrus.Errorf("There was an error updating state of instance: %s, %v", instance.K8sName, err)
 			}
@@ -282,7 +284,7 @@ func (this *PollingEventProcessor) processInstance(instance db.DatabaseInstance)
 
 			errorState := CreateErrorState(instance.Meta.Current.Action, message)
 
-			err := this.crdService.UpdateDatabaseInstanceState(instance.NamespaceUniqueId(), errorState)
+			err := this.instanceService.UpdateDatabaseInstanceState(instance.NamespaceUniqueId(), errorState)
 			if err != nil {
 				logrus.Errorf("There was an error updating state of instance: %s, %v", instance.NamespaceUniqueId(), err)
 			}
@@ -290,7 +292,7 @@ func (this *PollingEventProcessor) processInstance(instance db.DatabaseInstance)
 			return
 		}
 
-		err = this.crdService.DeleteDatabaseInstance(instance.NamespaceUniqueId())
+		err = this.instanceService.DeleteDatabaseInstance(instance.NamespaceUniqueId())
 
 		if err != nil {
 			logrus.Errorf("There was an error deleting instance: %s - %v", instance.NamespaceUniqueId(), err)
@@ -304,7 +306,7 @@ func (this *PollingEventProcessor) processInstance(instance db.DatabaseInstance)
 
 		errorState := CreateErrorState(instance.Meta.Current.Action, message)
 
-		err := this.crdService.UpdateDatabaseInstanceState(instance.NamespaceUniqueId(), errorState)
+		err := this.instanceService.UpdateDatabaseInstanceState(instance.NamespaceUniqueId(), errorState)
 		if err != nil {
 			logrus.Errorf("There was an error updating state of instance: %s", instance.NamespaceUniqueId())
 		}
@@ -314,11 +316,11 @@ func (this *PollingEventProcessor) processInstance(instance db.DatabaseInstance)
 
 }
 
-func (this *PollingEventProcessor) processBinding(binding db.DatabaseBinding) {
+func (this *PollingEventProcessor) processBinding(binding persistence.DatabaseBinding) {
 
-	if binding.Meta.Current.Action == db.CREATE {
+	if binding.Meta.Current.Action == persistence.CREATE {
 
-		dbInstance, err := this.crdService.FindDatabaseInstanceById(binding.DatabaseInstanceId)
+		dbInstance, err := this.instanceService.FindDatabaseInstanceById(binding.DatabaseInstanceId)
 
 		if err != nil {
 
@@ -326,18 +328,18 @@ func (this *PollingEventProcessor) processBinding(binding db.DatabaseBinding) {
 
 			errorState := CreateErrorState(binding.Meta.Current.Action, message)
 
-			err := this.crdService.UpdateDatabaseBindingState(binding.NamespaceUniqueId(), errorState)
+			err := this.bindingService.UpdateDatabaseBindingState(binding.NamespaceUniqueId(), errorState)
 			if err != nil {
 				logrus.Errorf("There was an error updating state of instance: %s", binding.NamespaceUniqueId())
 			}
 			return
 		}
 
-		if dbInstance.Meta.Current.State != db.READY {
+		if dbInstance.Meta.Current.State != persistence.READY {
 			message := fmt.Sprintf("Database Instance '%s' is not ready yet", binding.NamespaceUniqueId())
 			errorState := CreateErrorState(binding.Meta.Current.Action, message)
 
-			err := this.crdService.UpdateDatabaseBindingState(binding.NamespaceUniqueId(), errorState)
+			err := this.bindingService.UpdateDatabaseBindingState(binding.NamespaceUniqueId(), errorState)
 			if err != nil {
 				logrus.Errorf("There was an error updating state of instance: %s", binding.NamespaceUniqueId())
 			}
@@ -352,7 +354,7 @@ func (this *PollingEventProcessor) processBinding(binding db.DatabaseBinding) {
 			if strings.Contains(err.Error(), "already exists") {
 				newState := CreateOkState(binding.Meta.Current.Action)
 				newState.Message = "Secret already existed, using existing secret"
-				err = this.crdService.UpdateDatabaseBindingState(binding.NamespaceUniqueId(), newState)
+				err = this.bindingService.UpdateDatabaseBindingState(binding.NamespaceUniqueId(), newState)
 				if err != nil {
 					logrus.Errorf("There was an error updating state of instance: %s", binding.NamespaceUniqueId())
 				}
@@ -365,21 +367,21 @@ func (this *PollingEventProcessor) processBinding(binding db.DatabaseBinding) {
 
 			errorState := CreateErrorState(binding.Meta.Current.Action, message)
 
-			err := this.crdService.UpdateDatabaseBindingState(binding.NamespaceUniqueId(), errorState)
+			err := this.bindingService.UpdateDatabaseBindingState(binding.NamespaceUniqueId(), errorState)
 			if err != nil {
 				logrus.Errorf("There was an error updating state of instance: %s", binding.NamespaceUniqueId())
 			}
 			return
 		}
 
-		err = this.crdService.UpdateDatabaseBindingState(binding.NamespaceUniqueId(), CreateOkState(binding.Meta.Current.Action))
+		err = this.bindingService.UpdateDatabaseBindingState(binding.NamespaceUniqueId(), CreateOkState(binding.Meta.Current.Action))
 		if err != nil {
 			logrus.Errorf("There was an error updating state of instance: %s", binding.NamespaceUniqueId())
 		}
 
 		logrus.Infof("Successfully created binding: namespace=%s, binding=%s", binding.Namespace, binding.NamespaceUniqueId())
 
-	} else if binding.Meta.Current.Action == db.DELETE {
+	} else if binding.Meta.Current.Action == persistence.DELETE {
 
 		err := this.apiclient.DeleteSecret(binding.Namespace, binding.SecretName)
 
@@ -389,27 +391,27 @@ func (this *PollingEventProcessor) processBinding(binding db.DatabaseBinding) {
 
 			errorState := CreateErrorState(binding.Meta.Current.Action, message)
 
-			err := this.crdService.UpdateDatabaseBindingState(binding.NamespaceUniqueId(), errorState)
+			err := this.bindingService.UpdateDatabaseBindingState(binding.NamespaceUniqueId(), errorState)
 			if err != nil {
 				logrus.Errorf("There was an error updating state of instance: %s", binding.NamespaceUniqueId())
 			}
 			return
 		}
 
-		err = this.crdService.DeleteDatabaseBinding(binding.NamespaceUniqueId())
+		err = this.bindingService.DeleteDatabaseBinding(binding.NamespaceUniqueId())
 		if err != nil {
 			message := fmt.Sprintf("Could not delete binding: %s, %v", binding.NamespaceUniqueId(), err)
 
 			errorState := CreateErrorState(binding.Meta.Current.Action, message)
 
-			err := this.crdService.UpdateDatabaseBindingState(binding.NamespaceUniqueId(), errorState)
+			err := this.bindingService.UpdateDatabaseBindingState(binding.NamespaceUniqueId(), errorState)
 			if err != nil {
 				logrus.Errorf("There was an error updating state of instance: %s", binding.NamespaceUniqueId())
 			}
 			return
 		}
 
-		err = this.crdService.DeleteDatabaseBinding(binding.NamespaceUniqueId())
+		err = this.bindingService.DeleteDatabaseBinding(binding.NamespaceUniqueId())
 
 		if err != nil {
 			logrus.Errorf("There was an error deleting instance: %s - %v", binding.NamespaceUniqueId(), err)
@@ -423,7 +425,7 @@ func (this *PollingEventProcessor) processBinding(binding db.DatabaseBinding) {
 
 		errorState := CreateErrorState(binding.Meta.Current.Action, message)
 
-		err := this.crdService.UpdateDatabaseBindingState(binding.NamespaceUniqueId(), errorState)
+		err := this.bindingService.UpdateDatabaseBindingState(binding.NamespaceUniqueId(), errorState)
 		if err != nil {
 			logrus.Errorf("There was an error updating state of instance: %s", binding.NamespaceUniqueId())
 		}
@@ -440,27 +442,27 @@ func (this *PollingEventProcessor) loopElements() {
 	logrus.Info("Processloop: CHecking for pending and error elements")
 
 	// first try to reprocess error instances
-	errorInstances := this.crdService.FindInstancesByState(db.ERROR)
+	errorInstances := this.instanceService.FindInstancesByState(persistence.ERROR)
 
 	for _, errorInstance := range errorInstances {
 		this.processInstance(errorInstance)
 	}
 
 	// then try to reprocess error bindings
-	errorBindings := this.crdService.FindBindingsByState(db.ERROR)
+	errorBindings := this.bindingService.FindBindingsByState(persistence.ERROR)
 	for _, errorBinding := range errorBindings {
 		this.processBinding(errorBinding)
 	}
 
 	// then process pending instances
-	pendingInstances := this.crdService.FindInstancesByState(db.PENDING)
+	pendingInstances := this.instanceService.FindInstancesByState(persistence.PENDING)
 	for _, pendingInstance := range pendingInstances {
 		this.processInstance(pendingInstance)
 
 	}
 
 	// then process pending bindings
-	pendingBindings := this.crdService.FindBindingsByState(db.PENDING)
+	pendingBindings := this.bindingService.FindBindingsByState(persistence.PENDING)
 	for _, pendingBinding := range pendingBindings {
 		this.processBinding(pendingBinding)
 	}

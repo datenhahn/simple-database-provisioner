@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"github.com/sirupsen/logrus"
 	"simple-database-provisioner/pkg/apis/simpledatabaseprovisioner/v1alpha1"
-	"simple-database-provisioner/src/db"
+	"simple-database-provisioner/src/persistence"
 	"simple-database-provisioner/src/service"
 )
 
@@ -32,18 +32,23 @@ type SimpleDatabaseProvisionerEventHandler interface {
 }
 
 type GoSimpleDatabaseProvisionerEventHandler struct {
-	crdService service.CustomResourceService
-	processor  ProvisioningEventProcessor
+	eventService    service.EventService
+	bindingService  service.DatabaseBindingService
+	instanceService service.DatabaseInstanceService
+
+	processor ProvisioningEventProcessor
 }
 
 func createEventId(action, objectUid string) string {
 	return fmt.Sprintf("%s-%s", action, objectUid)
 }
 
-func NewGoSimpleDatabaseProvisionerEventHandler(crdService service.CustomResourceService, processor ProvisioningEventProcessor) SimpleDatabaseProvisionerEventHandler {
+func NewGoSimpleDatabaseProvisionerEventHandler(eventService service.EventService, bindingService service.DatabaseBindingService, instanceService service.DatabaseInstanceService, processor ProvisioningEventProcessor) SimpleDatabaseProvisionerEventHandler {
 
 	this := &GoSimpleDatabaseProvisionerEventHandler{}
-	this.crdService = crdService
+	this.eventService = eventService
+	this.bindingService = bindingService
+	this.instanceService = instanceService
 	this.processor = processor
 
 	return this
@@ -55,18 +60,18 @@ func (this *GoSimpleDatabaseProvisionerEventHandler) OnAddDatabaseBinding(bindin
 
 	logrus.Infof("Received AddDatabaseBinding event '%s': %s in namespace=%s", eventId, binding.Name, binding.Namespace)
 
-	if this.crdService.WasProcessed(eventId) {
+	if this.eventService.WasProcessed(eventId) {
 		logrus.Infof("Event '%s' - '%s' was already processed, skipping", eventId, binding.Name)
 		return
 	}
 
-	err := this.crdService.CreateDatabaseBinding(binding)
+	err := this.bindingService.CreateDatabaseBinding(binding)
 
 	if err != nil {
 		logrus.Errorf("Could not create database binding: %v", err)
 	}
 
-	this.crdService.MarkProcessed(eventId)
+	this.eventService.MarkProcessed(eventId)
 
 	go this.processor.ProcessEvents()
 }
@@ -77,18 +82,18 @@ func (this *GoSimpleDatabaseProvisionerEventHandler) OnDeleteDatabaseBinding(bin
 
 	logrus.Infof("Received MarkDatabaseBindingForDeletion event '%s': %s in namespace=%s", eventId, binding.Name, binding.Namespace)
 
-	if this.crdService.WasProcessed(eventId) {
+	if this.eventService.WasProcessed(eventId) {
 		logrus.Infof("Event '%s' - '%s' - '%s' was already processed, skipping", eventId, "DELETE", binding.Name)
 		return
 	}
 
-	err := this.crdService.MarkDatabaseBindingForDeletion(db.NewNamespaceUniqueId(binding.Namespace, binding.Name))
+	err := this.bindingService.MarkDatabaseBindingForDeletion(persistence.NewNamespaceUniqueId(binding.Namespace, binding.Name))
 
 	if err != nil {
 		logrus.Errorf("Could not delete database binding '%s': %v", binding.Name, err)
 	}
 
-	this.crdService.MarkProcessed(eventId)
+	this.eventService.MarkProcessed(eventId)
 
 	go this.processor.ProcessEvents()
 }
@@ -99,18 +104,18 @@ func (this *GoSimpleDatabaseProvisionerEventHandler) OnAddDatabaseInstance(insta
 
 	logrus.Infof("Received AddDatabaseInstance event '%s': %s in namespace=%s", eventId, instance.Name, instance.Namespace)
 
-	if this.crdService.WasProcessed(eventId) {
+	if this.eventService.WasProcessed(eventId) {
 		logrus.Infof("Event '%s' - '%s' was already processed, skipping", eventId, instance.Name)
 		return
 	}
 
-	err := this.crdService.CreateDatabaseInstance(instance)
+	err := this.instanceService.CreateDatabaseInstance(instance)
 
 	if err != nil {
 		logrus.Errorf("Could not create database instance '%s': %v", instance.Name, err)
 	}
 
-	this.crdService.MarkProcessed(eventId)
+	this.eventService.MarkProcessed(eventId)
 
 	go this.processor.ProcessEvents()
 }
@@ -121,18 +126,18 @@ func (this *GoSimpleDatabaseProvisionerEventHandler) OnDeleteDatabaseInstance(in
 
 	logrus.Infof("Received MarkDatabaseInstanceForDeletion event '%s': %s in namespace=%s", eventId, instance.Name, instance.Namespace)
 
-	if this.crdService.WasProcessed(eventId) {
+	if this.eventService.WasProcessed(eventId) {
 		logrus.Infof("Event '%s' - '%s' was already processed, skipping", eventId, instance.Name)
 		return
 	}
 
-	err := this.crdService.MarkDatabaseInstanceForDeletion(db.NewNamespaceUniqueId(instance.Namespace, instance.Name))
+	err := this.instanceService.MarkDatabaseInstanceForDeletion(persistence.NewNamespaceUniqueId(instance.Namespace, instance.Name))
 
 	if err != nil {
 		logrus.Errorf("Could not delete database instance '%s': %v", instance.Name, err)
 	}
 
-	this.crdService.MarkProcessed(eventId)
+	this.eventService.MarkProcessed(eventId)
 
 	go this.processor.ProcessEvents()
 }

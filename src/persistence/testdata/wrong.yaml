@@ -1,14 +1,14 @@
 instances:
   - id: my-instance
     dbmsserver: my-dbms-server
-    databasename: my-instance-db-name
+    databasename: my-instance-persistence-name
     credentials:
       host: myhost
       user: myuser
       password: mypassword
       port: 5432
       ssl: true
-      dbname: my-instance-db-name
+      dbname: my-instance-persistence-name
     meta:
       - previous:
         action: ""

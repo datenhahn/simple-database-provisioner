@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package db
+package persistence
 
 import (
 	"fmt"
@@ -22,95 +22,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	"os"
-	"simple-database-provisioner/src/util"
 	"sync"
-	"time"
 )
-
-type ProvisioningState string
-type ProvisioningAction string
-
-const (
-	CREATE ProvisioningAction = "create"
-	DELETE ProvisioningAction = "delete"
-)
-
-func (this ProvisioningAction) String() string {
-	return string(this)
-}
-
-const (
-	PENDING ProvisioningState = "pending"
-	READY   ProvisioningState = "ready"
-	ERROR   ProvisioningState = "error"
-)
-
-func (this ProvisioningState) String() string {
-	return string(this)
-}
-
-type State struct {
-	Action     ProvisioningAction
-	State      ProvisioningState
-	Message    string
-	LastUpdate time.Time
-}
-
-func (this State) String() string {
-	return fmt.Sprintf("{ action: '%s', state: '%s', message: '%s', lastUpdate. '%s' }",
-		this.Action, this.State, this.Message, this.LastUpdate)
-}
-
-type Meta struct {
-	Previous State
-	Current  State
-}
-
-type NamespaceUniqueId string
-
-func NewNamespaceUniqueId(namespace, k8sName string) NamespaceUniqueId {
-	return NamespaceUniqueId(fmt.Sprintf("%s-%s", namespace, k8sName))
-}
-
-type DatabaseInstance struct {
-	K8sName      string
-	DbmsServer   string
-	DatabaseName string
-	Namespace    string
-	Credentials  map[string][]byte
-	Meta         Meta
-}
-
-func (this DatabaseInstance) PrefixedDatabaseName() string {
-
-	fullName := fmt.Sprintf("%s-%s", this.Namespace, this.DatabaseName)
-
-	sliceEnd := 54
-
-	if len(fullName) < 54 {
-		sliceEnd = len(fullName)
-	}
-
-	safeName := fmt.Sprintf("%s-%s", fullName[:sliceEnd], util.Md5Short(fullName))
-
-	return safeName
-}
-
-func (this DatabaseInstance) NamespaceUniqueId() NamespaceUniqueId {
-	return NamespaceUniqueId(fmt.Sprintf("%s-%s", this.Namespace, this.K8sName))
-}
-
-type DatabaseBinding struct {
-	K8sName            string
-	DatabaseInstanceId NamespaceUniqueId
-	SecretName         string
-	Namespace          string
-	Meta               Meta
-}
-
-func (this DatabaseBinding) NamespaceUniqueId() NamespaceUniqueId {
-	return NamespaceUniqueId(fmt.Sprintf("%s-%s", this.Namespace, this.K8sName))
-}
 
 type DbData struct {
 	DatabaseInstances []DatabaseInstance
@@ -118,27 +31,12 @@ type DbData struct {
 	ProcessedEvents   []string
 }
 
-type AppDatabase interface {
-	AddDatabaseBinding(binding DatabaseBinding) error
-	UpdateDatabaseBindingState(bindingId NamespaceUniqueId, newState State) error
-	UpdateDatabaseInstanceState(instanceId NamespaceUniqueId, newState State) error
-	AddDatabaseInstance(instance DatabaseInstance) error
-	UpdateDatabaseInstanceCredentials(instanceId NamespaceUniqueId, newCredentials map[string][]byte) error
-	DeleteDatabaseBinding(bindingId NamespaceUniqueId) error
-	DeleteDatabaseInstance(bindingInstance NamespaceUniqueId) error
-	WasProcessed(eventId string) bool
-	MarkProcessed(eventId string)
-	FindDatabaseInstanceById(instanceId NamespaceUniqueId) (DatabaseInstance, error)
-	FindAllDatabaseInstances() []DatabaseInstance
-	FindAllDatabaseBindings() []DatabaseBinding
-}
-
 type YamlAppDatabase struct {
 	yamlFile string
 	mutex    *sync.Mutex
 }
 
-func NewYamlAppDatabase(yamlFile string) AppDatabase {
+func NewYamlAppDatabase(yamlFile string) *YamlAppDatabase {
 
 	this := &YamlAppDatabase{}
 

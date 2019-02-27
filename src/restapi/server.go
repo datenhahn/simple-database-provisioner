@@ -20,7 +20,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
-	"simple-database-provisioner/src/db"
+	"simple-database-provisioner/src/persistence"
 	"simple-database-provisioner/src/service"
 )
 
@@ -29,14 +29,16 @@ type CommandApi interface {
 }
 
 type RestCommandApi struct {
-	crdService service.CustomResourceService
+	bindingService  service.DatabaseBindingService
+	instanceService service.DatabaseInstanceService
 }
 
-func NewRestCommandApi(crdService service.CustomResourceService) CommandApi {
+func NewRestCommandApi(bindingService service.DatabaseBindingService, instanceService service.DatabaseInstanceService) CommandApi {
 
 	this := &RestCommandApi{}
 
-	this.crdService = crdService
+	this.bindingService = bindingService
+	this.instanceService = instanceService
 
 	return this
 }
@@ -45,7 +47,7 @@ func (this *RestCommandApi) RunServer(htmlPath string) {
 	go this.runServer(htmlPath)
 }
 
-func displayBindings(bindings []db.DatabaseBinding) []map[string]string {
+func displayBindings(bindings []persistence.DatabaseBinding) []map[string]string {
 	lines := []map[string]string{}
 
 	for _, binding := range bindings {
@@ -66,7 +68,7 @@ func displayBindings(bindings []db.DatabaseBinding) []map[string]string {
 	return lines
 }
 
-func displayInstances(instances []db.DatabaseInstance) []map[string]string {
+func displayInstances(instances []persistence.DatabaseInstance) []map[string]string {
 	lines := []map[string]string{}
 
 	for _, instance := range instances {
@@ -94,8 +96,8 @@ func (this *RestCommandApi) runServer(htmlPath string) {
 	r.GET("/list", func(c *gin.Context) {
 
 		c.JSON(200, gin.H{
-			"instances": displayInstances(this.crdService.FindAllDatabaseInstances()),
-			"bindings":  displayBindings(this.crdService.FindAllDatabaseBindings()),
+			"instances": displayInstances(this.instanceService.FindAllDatabaseInstances()),
+			"bindings":  displayBindings(this.bindingService.FindAllDatabaseBindings()),
 		})
 	})
 

@@ -2,7 +2,7 @@
 
 package mocks
 
-import db "simple-database-provisioner/src/db"
+import db "simple-database-provisioner/src/persistence"
 import mock "github.com/stretchr/testify/mock"
 
 import v1alpha1 "simple-database-provisioner/pkg/apis/simpledatabaseprovisioner/v1alpha1"

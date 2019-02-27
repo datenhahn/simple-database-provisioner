@@ -109,7 +109,7 @@ func (this *PostgresqlDbmsProvider) CreateDatabaseInstance(dbmsServerId string, 
 	err = db.Close()
 
 	if err != nil {
-		return dbms.DatabaseCredentials{}, fmt.Errorf("Error closing db connection: %v - databaseInstance=%s - dbmsCreds=%s", err, QuoteIdentifier(databaseInstanceName), dbmsServerCredentials.String())
+		return dbms.DatabaseCredentials{}, fmt.Errorf("Error closing persistence connection: %v - databaseInstance=%s - dbmsCreds=%s", err, QuoteIdentifier(databaseInstanceName), dbmsServerCredentials.String())
 	}
 
 	return instanceCreds, nil
