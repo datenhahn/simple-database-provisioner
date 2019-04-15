@@ -21,3 +21,7 @@ import:
   - package: github.com/gin-contrib/cors
     version: v1.2
   - package: github.com/gin-contrib/static
+  - package: go.etcd.io/bbolt
+    version: v1.3.2
+  - package: github.com/asdine/storm
+    version: v2.2.0

@@ -78,6 +78,8 @@ func (this *PersistentDatabaseBindingService) CreateDatabaseBinding(binding *v1a
 		},
 	}
 
+	newBinding.NamespaceUniqueId = newBinding.GetNamespaceUniqueId()
+
 	return this.bindingRepo.AddDatabaseBinding(newBinding)
 }
 

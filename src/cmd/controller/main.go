@@ -20,6 +20,7 @@ import "C"
 import (
 	"flag"
 	"fmt"
+	"github.com/asdine/storm"
 	"github.com/sirupsen/logrus"
 	"k8s.io/client-go/tools/cache"
 	"os"
@@ -81,7 +82,7 @@ func main() {
 	logrus.Info("Reading config file from: config.yaml")
 
 	configFile := flag.String("configFile", "/app/config.yaml", "the configuration file")
-	databaseFile := flag.String("databaseFile", "/persistence/database.yaml", "the database file where all state is stored in")
+	databaseFile := flag.String("databaseFile", "/persistence/database.db", "the database file where all state is stored in")
 	crdPath := flag.String("crdPath", "/app/crds", "path to the simpledatabasebinding.yaml and simpledatabaseinstance.yaml custom resource definitions")
 	logLevel := flag.String("logLevel", "info", "the log level (e.g. info, debug)")
 	htmlPath := flag.String("htmlPath", "/app/html", "the path to the webui html directory (will be served as /)")
@@ -145,7 +146,9 @@ func main() {
 
 	client := k8sclient.NewGoK8sClient(insideCluster)
 
-	appDb := persistence.NewYamlAppDatabase(*databaseFile)
+	db, err := storm.Open(*databaseFile)
+
+	appDb := persistence.NewStormPersistenceBackend(db)
 
 	eventService := service.NewPersistentEventService(appDb)
 	bindingService := service.NewPersistentDatabaseBindingService(appDb)

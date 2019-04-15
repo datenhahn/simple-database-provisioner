@@ -38,6 +38,44 @@ var TEST_CREDENTIALS = dbms.DatabaseCredentials{
 	Ssl:      false,
 }
 
+var UNREACHABLE_HOST_CREDENTIALS = dbms.DatabaseCredentials{
+	Dbname:   "postgres",
+	User:     "postgres",
+	Password: "postgres",
+	Port:     5432,
+	Host:     "hostdoesnotexist",
+	Ssl:      false,
+}
+
+var WRONG_CREDENTIALS = dbms.DatabaseCredentials{
+	Dbname:   "postgres",
+	User:     "postgres",
+	Password: "WRONGPASSWORD",
+	Port:     5432,
+	Host:     "localhost",
+	Ssl:      false,
+}
+
+func TestPostgresqlDbmsProvider_WrongPassword(t *testing.T) {
+
+	postgresqlProvider := &PostgresqlDbmsProvider{}
+
+	_, err := postgresqlProvider.CreateDatabaseInstance("golang-test-persistence", WRONG_CREDENTIALS, "foo")
+
+	assert.True(t, err != nil)
+	assert.Regexp(t, "password authentication failed", err.Error())
+}
+
+func TestPostgresqlDbmsProvider_CouldNotConnect(t *testing.T) {
+
+	postgresqlProvider := &PostgresqlDbmsProvider{}
+
+	_, err := postgresqlProvider.CreateDatabaseInstance("golang-test-persistence", UNREACHABLE_HOST_CREDENTIALS, "foo")
+
+	assert.NotNil(t, err)
+	assert.Regexp(t, "dial tcp: lookup", err.Error())
+}
+
 // creates a test database and ensures it exists
 func createDatabase(t *testing.T, postgresqlProvider dbms.DbmsProvider, dbname string) {
 
@@ -77,4 +115,28 @@ func TestPostgresqlDbmsProvider_CreateDatabaseInstance(t *testing.T) {
 	createDatabase(t, postgresqlProvider, "golang-test-persistence")
 	deleteDatabase(t, postgresqlProvider, "golang-test-persistence")
 
+}
+
+func TestPostgresqlDbmsProvider_CreateDatabaseTwoTimes(t *testing.T) {
+
+	postgresqlProvider := &PostgresqlDbmsProvider{}
+	dbName := "golang-test-persistence"
+
+	createDatabase(t, postgresqlProvider, dbName)
+	_, err := postgresqlProvider.CreateDatabaseInstance("golang-test-persistence", TEST_CREDENTIALS, dbName)
+
+	assert.NotNil(t, err)
+	assert.Regexp(t, "database \"golang-test-persistence\" already exists", err.Error())
+	deleteDatabase(t, postgresqlProvider, "golang-test-persistence")
+
+}
+
+func TestPostgresqlDbmsProvider_CreateDatabaseInstanceWithSpecialChars(t *testing.T) {
+
+	postgresqlProvider := &PostgresqlDbmsProvider{}
+	dbName := "123$%&"
+	_, err := postgresqlProvider.CreateDatabaseInstance("golang-test-persistence", TEST_CREDENTIALS, dbName)
+
+	assert.NotNil(t, err)
+	assert.Regexp(t, "Database name '123\\$%&' must match regex", err.Error())
 }

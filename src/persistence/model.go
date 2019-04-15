@@ -23,12 +23,13 @@ import (
 )
 
 type DatabaseInstance struct {
-	K8sName      string
-	DbmsServer   string
-	DatabaseName string
-	Namespace    string
-	Credentials  map[string][]byte
-	Meta         Meta
+	NamespaceUniqueId NamespaceUniqueId `storm:"id"`
+	K8sName           string
+	DbmsServer        string
+	DatabaseName      string
+	Namespace         string
+	Credentials       map[string][]byte
+	Meta              Meta
 }
 
 func (this DatabaseInstance) PrefixedDatabaseName() string {
@@ -46,8 +47,12 @@ func (this DatabaseInstance) PrefixedDatabaseName() string {
 	return safeName
 }
 
-func (this DatabaseInstance) NamespaceUniqueId() NamespaceUniqueId {
+func (this DatabaseInstance) GetNamespaceUniqueId() NamespaceUniqueId {
 	return NamespaceUniqueId(fmt.Sprintf("%s-%s", this.Namespace, this.K8sName))
+}
+
+type Event struct {
+	Id string `storm:"id"`
 }
 
 type ProvisioningState string
@@ -85,8 +90,8 @@ func (this State) String() string {
 }
 
 type Meta struct {
-	Previous State
-	Current  State
+	Previous State `storm:"inline"`
+	Current  State `storm:"inline"`
 }
 
 type NamespaceUniqueId string
@@ -96,13 +101,14 @@ func NewNamespaceUniqueId(namespace, k8sName string) NamespaceUniqueId {
 }
 
 type DatabaseBinding struct {
+	NamespaceUniqueId  NamespaceUniqueId `storm:"id"`
 	K8sName            string
 	DatabaseInstanceId NamespaceUniqueId
 	SecretName         string
 	Namespace          string
-	Meta               Meta
+	Meta               Meta `storm:"inline"`
 }
 
-func (this DatabaseBinding) NamespaceUniqueId() NamespaceUniqueId {
+func (this DatabaseBinding) GetNamespaceUniqueId() NamespaceUniqueId {
 	return NamespaceUniqueId(fmt.Sprintf("%s-%s", this.Namespace, this.K8sName))
 }

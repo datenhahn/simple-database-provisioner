@@ -108,6 +108,8 @@ func (this *PersistentDatabaseInstanceService) CreateDatabaseInstance(instance *
 		},
 	}
 
+	newInstance.NamespaceUniqueId = newInstance.GetNamespaceUniqueId()
+
 	return this.instanceRepo.AddDatabaseInstance(newInstance)
 
 }

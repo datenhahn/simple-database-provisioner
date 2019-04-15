@@ -54,7 +54,7 @@ func displayBindings(bindings []persistence.DatabaseBinding) []map[string]string
 
 		text := make(map[string]string)
 
-		text["id"] = string(binding.NamespaceUniqueId())
+		text["id"] = string(binding.NamespaceUniqueId)
 		text["namespace"] = binding.Namespace
 		text["secret"] = binding.SecretName
 		text["databaseId"] = string(binding.DatabaseInstanceId)
@@ -75,7 +75,7 @@ func displayInstances(instances []persistence.DatabaseInstance) []map[string]str
 
 		text := make(map[string]string)
 
-		text["id"] = string(instance.NamespaceUniqueId())
+		text["id"] = string(instance.NamespaceUniqueId)
 		text["namespace"] = instance.Namespace
 		text["databaseName"] = instance.DatabaseName
 		text["dbmsServer"] = string(instance.DbmsServer)

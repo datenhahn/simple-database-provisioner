@@ -26,9 +26,14 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"os"
 	"path/filepath"
+	"simple-database-provisioner/src/util"
 
 	apiextension "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 )
+
+func init() {
+	util.PanicIfNotMinikube()
+}
 
 // GoCustomResourceDefinitionManager implements CustomResourceDefinitionManager
 // interface to manage the CRDs inside the cluster.
@@ -129,6 +134,7 @@ func (this *GoCustomResourceDefinitionManager) isCustomResourceDefinitionInstall
 //
 //   crdManager.deleteCustomResourceDefinition("simpledatabasebindings.k8s.ecodia.de")
 func (this *GoCustomResourceDefinitionManager) deleteCustomResourceDefinition(name string) error {
+	util.PanicIfNotMinikube()
 	options := v1.DeleteOptions{}
 	err := this.apiextensionClientSet.ApiextensionsV1beta1().CustomResourceDefinitions().Delete(name, &options)
 

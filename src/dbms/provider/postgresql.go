@@ -26,7 +26,7 @@ import (
 	"strings"
 )
 
-const DBNAME_REGEX = "[A-Za-z0-9_-]+"
+const DBNAME_REGEX = "^[A-Za-z0-9_-]+$"
 
 var dbnameRegex = regexp.MustCompile(DBNAME_REGEX)
 
@@ -63,20 +63,30 @@ func connect(credentials dbms.DatabaseCredentials) (*sql.DB, error) {
 		return nil, fmt.Errorf("Could not connect to database: %s", credentials.String())
 	}
 
+	err = db.Ping()
+
+	if err != nil {
+		return nil, err
+	}
+
 	return db, nil
 
 }
 
 func (this *PostgresqlDbmsProvider) CreateDatabaseInstance(dbmsServerId string, dbmsServerCredentials dbms.DatabaseCredentials, databaseInstanceName string) (dbms.DatabaseCredentials, error) {
-	db, err := connect(dbmsServerCredentials)
-	defer db.Close()
-
-	if err != nil {
-		return dbms.DatabaseCredentials{}, err
-	}
 
 	if !isValidDatabaseName(databaseInstanceName) {
 		return dbms.DatabaseCredentials{}, fmt.Errorf("Database name '%s' must match regex: %s", databaseInstanceName, DBNAME_REGEX)
+	}
+
+	db, err := connect(dbmsServerCredentials)
+
+	if db != nil {
+		defer db.Close()
+	}
+
+	if err != nil {
+		return dbms.DatabaseCredentials{}, err
 	}
 
 	_, err = db.Exec(fmt.Sprintf("CREATE DATABASE %s", QuoteIdentifier(databaseInstanceName)))
@@ -185,10 +195,6 @@ func (this *PostgresqlDbmsProvider) DeleteDatabaseInstance(dbmsServerId string, 
 	}
 
 	_, err = db.Query(fmt.Sprintf("DROP ROLE %s;", QuoteIdentifier(databaseInstanceName)))
-
-	if err != nil {
-		return err
-	}
 
 	if err != nil {
 		return err

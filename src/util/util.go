@@ -19,7 +19,11 @@ package util
 import (
 	"crypto/md5"
 	"fmt"
+	"github.com/Sirupsen/logrus"
+	"io/ioutil"
 	"math/rand"
+	"os"
+	"os/exec"
 	"strings"
 	"time"
 )
@@ -41,4 +45,33 @@ func Md5(input string) string {
 
 func Md5Short(input string) string {
 	return Md5(input)[:8]
+}
+
+func CreateTempFile() string {
+	file, err := ioutil.TempFile("", "sdp-")
+	defer os.Remove(file.Name())
+
+	if err != nil {
+		logrus.Panicf("Error creating tempfile: %v", err)
+	}
+
+	return file.Name()
+}
+
+func GetKubectlContext() string {
+
+	out, err := exec.Command("kubectl", "config", "current-context").Output()
+	if err != nil {
+		logrus.Panic(err)
+	}
+	return strings.TrimSpace(string(out))
+}
+
+func PanicIfNotMinikube() {
+
+	cluster := GetKubectlContext()
+
+	if cluster != "minikube" {
+		logrus.Panicf("MUST RUN ON MINIKUBE, current cluster is: %s", cluster)
+	}
 }
