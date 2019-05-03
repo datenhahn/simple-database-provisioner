@@ -80,13 +80,14 @@ func TestGoCustomResourceDefinitionInstaller_InstallCustomResourceDefinition(t *
 
 	crdInstaller := NewGoCustomResourceDefinitionManager(false)
 
-	err := crdInstaller.deleteCustomResourceDefinition(SDP_BINDINGS_FQDN)
-	err = crdInstaller.deleteCustomResourceDefinition(SDP_INSTANCES_FQDN)
+	// Dangerous as it might lead to resource deletions
+	//err := crdInstaller.deleteCustomResourceDefinition(SDP_BINDINGS_FQDN)
+	//err = crdInstaller.deleteCustomResourceDefinition(SDP_INSTANCES_FQDN)
+	//
+	//assert.False(t, crdInstaller.isCustomResourceDefinitionInstalled(SDP_BINDINGS_FQDN))
+	//assert.False(t, crdInstaller.isCustomResourceDefinitionInstalled(SDP_INSTANCES_FQDN))
 
-	assert.False(t, crdInstaller.isCustomResourceDefinitionInstalled(SDP_BINDINGS_FQDN))
-	assert.False(t, crdInstaller.isCustomResourceDefinitionInstalled(SDP_INSTANCES_FQDN))
-
-	err = crdInstaller.InstallCustomResourceDefinition("../../crds/simpledatabasebinding.yaml")
+	err := crdInstaller.InstallCustomResourceDefinition("../../crds/simpledatabasebinding.yaml")
 	assert.Nil(t, err)
 
 	err2 := crdInstaller.InstallCustomResourceDefinition("../../crds/simpledatabaseinstance.yaml")
@@ -98,11 +99,12 @@ func TestGoCustomResourceDefinitionInstaller_InstallCustomResourceDefinition(t *
 	assert.True(t, crdInstaller.isCustomResourceDefinitionInstalled(SDP_BINDINGS_FQDN))
 	assert.True(t, crdInstaller.isCustomResourceDefinitionInstalled(SDP_INSTANCES_FQDN))
 
-	err4 := crdInstaller.deleteCustomResourceDefinition(SDP_BINDINGS_FQDN)
-	assert.Nil(t, err4)
-
-	err5 := crdInstaller.deleteCustomResourceDefinition(SDP_INSTANCES_FQDN)
-	assert.Nil(t, err5)
+	// Dangerous as it might lead to resource deletions
+	//err4 := crdInstaller.deleteCustomResourceDefinition(SDP_BINDINGS_FQDN)
+	//assert.Nil(t, err4)
+	//
+	//err5 := crdInstaller.deleteCustomResourceDefinition(SDP_INSTANCES_FQDN)
+	//assert.Nil(t, err5)
 }
 
 func TestGoCustomResourceDefinitionInstaller_InitInsideCluster(t *testing.T) {
