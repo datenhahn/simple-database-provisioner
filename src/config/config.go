@@ -22,8 +22,16 @@ import (
 	"io/ioutil"
 )
 
+type OperationMode string
+
+const (
+	PRESERVING OperationMode = "preserving"
+	MANAGING   OperationMode = "managing"
+)
+
 type AppConfig struct {
-	DbmsServers []DbmsServerConfig `yaml:"dbmsServers"`
+	OperationMode OperationMode      `yaml:"operationMode"`
+	DbmsServers   []DbmsServerConfig `yaml:"dbmsServers"`
 }
 
 type DbmsServerConfig struct {

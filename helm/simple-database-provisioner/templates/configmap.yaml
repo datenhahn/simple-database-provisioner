@@ -8,6 +8,7 @@ data:
 {{ toYaml .Values.config | indent 4 }}
 {{- else }}
   config.yaml: |-
+     operation_mode: {{ .Values.config.operationMode }}
      dbmsServers:
       - name: dbms-dev-postgres
         type: postgresql

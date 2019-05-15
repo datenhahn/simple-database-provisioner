@@ -126,6 +126,15 @@ func CreateErrorState(action persistence.ProvisioningAction, message string) per
 	}
 }
 
+func CreatePendingState(action persistence.ProvisioningAction, message string) persistence.State {
+	return persistence.State{
+		State:      persistence.PENDING,
+		Action:     action,
+		Message:    message,
+		LastUpdate: time.Now().Round(time.Second),
+	}
+}
+
 func CreateOkState(action persistence.ProvisioningAction) persistence.State {
 	return persistence.State{
 		State:      persistence.READY,
@@ -259,46 +268,58 @@ func (this *PollingEventProcessor) processInstance(instance persistence.Database
 
 	} else if instance.Meta.Current.Action == persistence.DELETE {
 
-		credentials, err := this.getDbmsCredentials(dbmsServer)
+		if this.appConfig.OperationMode == config.MANAGING {
 
-		if err != nil {
+			credentials, err := this.getDbmsCredentials(dbmsServer)
 
-			message := fmt.Sprintf("Could not get database credentials for server '%s'", dbmsServer.Name)
+			if err != nil {
 
-			errorState := CreateErrorState(instance.Meta.Current.Action, message)
+				message := fmt.Sprintf("Could not get database credentials for server '%s'", dbmsServer.Name)
 
-			err := this.instanceService.UpdateDatabaseInstanceState(instance.NamespaceUniqueId, errorState)
+				errorState := CreateErrorState(instance.Meta.Current.Action, message)
+
+				err := this.instanceService.UpdateDatabaseInstanceState(instance.NamespaceUniqueId, errorState)
+				if err != nil {
+					logrus.Errorf("There was an error updating state of instance: %s, %v", instance.K8sName, err)
+				}
+
+				return
+			}
+
+			err = provider.DeleteDatabaseInstance(dbmsServer.Name, credentials, instance.PrefixedDatabaseName())
+
+			//TODO: replace string checks with err type checks
+			if err != nil && !strings.Contains(err.Error(), "does not exist") {
+
+				message := fmt.Sprintf("Could not delete databaseInstance '%s': %v", instance.K8sName, err)
+
+				errorState := CreateErrorState(instance.Meta.Current.Action, message)
+
+				err := this.instanceService.UpdateDatabaseInstanceState(instance.NamespaceUniqueId, errorState)
+				if err != nil {
+					logrus.Errorf("There was an error updating state of instance: %s, %v", instance.NamespaceUniqueId, err)
+				}
+
+				return
+			}
+
+			err = this.instanceService.DeleteDatabaseInstance(instance.NamespaceUniqueId)
+
+			if err != nil {
+				logrus.Errorf("There was an error deleting instance: %s - %v", instance.NamespaceUniqueId, err)
+			}
+
+			logrus.Infof("Successfully deleted instance: %s", instance.NamespaceUniqueId)
+		} else {
+			message := fmt.Sprintf("OperationMode == '%s' , Skipping deletion of database instance: %s", this.appConfig.OperationMode, instance.NamespaceUniqueId)
+			logrus.Info(message)
+			pendingState := CreatePendingState(instance.Meta.Current.Action, message)
+
+			err := this.instanceService.UpdateDatabaseInstanceState(instance.NamespaceUniqueId, pendingState)
 			if err != nil {
 				logrus.Errorf("There was an error updating state of instance: %s, %v", instance.K8sName, err)
 			}
-
-			return
 		}
-
-		err = provider.DeleteDatabaseInstance(dbmsServer.Name, credentials, instance.PrefixedDatabaseName())
-
-		//TODO: replace string checks with err type checks
-		if err != nil && !strings.Contains(err.Error(), "does not exist") {
-
-			message := fmt.Sprintf("Could not delete databaseInstance '%s': %v", instance.K8sName, err)
-
-			errorState := CreateErrorState(instance.Meta.Current.Action, message)
-
-			err := this.instanceService.UpdateDatabaseInstanceState(instance.NamespaceUniqueId, errorState)
-			if err != nil {
-				logrus.Errorf("There was an error updating state of instance: %s, %v", instance.NamespaceUniqueId, err)
-			}
-
-			return
-		}
-
-		err = this.instanceService.DeleteDatabaseInstance(instance.NamespaceUniqueId)
-
-		if err != nil {
-			logrus.Errorf("There was an error deleting instance: %s - %v", instance.NamespaceUniqueId, err)
-		}
-
-		logrus.Infof("Successfully deleted instance: %s", instance.NamespaceUniqueId)
 
 	} else {
 
@@ -383,41 +404,53 @@ func (this *PollingEventProcessor) processBinding(binding persistence.DatabaseBi
 
 	} else if binding.Meta.Current.Action == persistence.DELETE {
 
-		err := this.apiclient.DeleteSecret(binding.Namespace, binding.SecretName)
+		if this.appConfig.OperationMode == config.MANAGING {
 
-		//TODO: replace string checks with err type checks
-		if err != nil && !strings.Contains(err.Error(), "not found") {
-			message := fmt.Sprintf("Could not delete binding: %s, %v", binding.NamespaceUniqueId, err)
+			err := this.apiclient.DeleteSecret(binding.Namespace, binding.SecretName)
 
-			errorState := CreateErrorState(binding.Meta.Current.Action, message)
+			//TODO: replace string checks with err type checks
+			if err != nil && !strings.Contains(err.Error(), "not found") {
+				message := fmt.Sprintf("Could not delete binding: %s, %v", binding.NamespaceUniqueId, err)
 
-			err := this.bindingService.UpdateDatabaseBindingState(binding.NamespaceUniqueId, errorState)
-			if err != nil {
-				logrus.Errorf("There was an error updating state of instance: %s", binding.NamespaceUniqueId)
+				errorState := CreateErrorState(binding.Meta.Current.Action, message)
+
+				err := this.bindingService.UpdateDatabaseBindingState(binding.NamespaceUniqueId, errorState)
+				if err != nil {
+					logrus.Errorf("There was an error updating state of instance: %s", binding.NamespaceUniqueId)
+				}
+				return
 			}
-			return
-		}
 
-		err = this.bindingService.DeleteDatabaseBinding(binding.NamespaceUniqueId)
-		if err != nil {
-			message := fmt.Sprintf("Could not delete binding: %s, %v", binding.NamespaceUniqueId, err)
-
-			errorState := CreateErrorState(binding.Meta.Current.Action, message)
-
-			err := this.bindingService.UpdateDatabaseBindingState(binding.NamespaceUniqueId, errorState)
+			err = this.bindingService.DeleteDatabaseBinding(binding.NamespaceUniqueId)
 			if err != nil {
-				logrus.Errorf("There was an error updating state of instance: %s", binding.NamespaceUniqueId)
+				message := fmt.Sprintf("Could not delete binding: %s, %v", binding.NamespaceUniqueId, err)
+
+				errorState := CreateErrorState(binding.Meta.Current.Action, message)
+
+				err := this.bindingService.UpdateDatabaseBindingState(binding.NamespaceUniqueId, errorState)
+				if err != nil {
+					logrus.Errorf("There was an error updating state of instance: %s", binding.NamespaceUniqueId)
+				}
+				return
 			}
-			return
+
+			err = this.bindingService.DeleteDatabaseBinding(binding.NamespaceUniqueId)
+
+			if err != nil {
+				logrus.Errorf("There was an error deleting instance: %s - %v", binding.NamespaceUniqueId, err)
+			}
+
+			logrus.Infof("Successfully deleted binding: %s", binding.NamespaceUniqueId)
+		} else {
+			message := fmt.Sprintf("OperationMode == '%s' , Skipping deletion of database binding: %s", this.appConfig.OperationMode, binding.NamespaceUniqueId)
+			logrus.Info(message)
+			pendingState := CreatePendingState(binding.Meta.Current.Action, message)
+
+			err := this.bindingService.UpdateDatabaseBindingState(binding.NamespaceUniqueId, pendingState)
+			if err != nil {
+				logrus.Errorf("There was an error updating state of binding: %s, %v", binding.K8sName, err)
+			}
 		}
-
-		err = this.bindingService.DeleteDatabaseBinding(binding.NamespaceUniqueId)
-
-		if err != nil {
-			logrus.Errorf("There was an error deleting instance: %s - %v", binding.NamespaceUniqueId, err)
-		}
-
-		logrus.Infof("Successfully deleted binding: %s", binding.NamespaceUniqueId)
 
 	} else {
 

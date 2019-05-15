@@ -56,14 +56,27 @@ Now watch the logs and create/delete some resources (e.g. from the `examples` fo
 **config.yaml**
 ```yaml
 
+provisioningMode: preserving
+
 dbmsServers:
   dev-postgres:
     secret: dev-postgres-secret
-
-persistence:
-  type: file
-  location: ./sdp.db.yaml
 ```
+
+==== Operation modes
+
+The simple database provisioner supports different operation modes for different
+usecases. The difference between the modes is their destructiveness. While in
+dev environments it might be desireable to actively enforce the state described
+in the kubernetes resources and clean up the databases on removal on production one
+might want to ensure, that data can only be deleted manually and not by accident.
+
+* **managing**:
+   ** when the resources are removed, also the databases and secrets are removed
+
+* **preserving** :
+   ** databases and secrets are never deleted
+   ** databases and secrets are never modified
 
 === Database Format (DRAFT)
 

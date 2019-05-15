@@ -47,7 +47,6 @@ func printInfo() {
            /_/                                                 /_/
   Copyright (c) 2019 Ecodia GmbH & Co. KG ( https://ecodia.de ) <opensource@ecodia.de>
   Licensed under the Apache License, Version 2.0
-
 `
 	fmt.Print(banner)
 

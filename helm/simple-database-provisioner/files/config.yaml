@@ -1,6 +1,0 @@
-dbmsServers:
-  - name: dbms-dev-postgres
-    type: postgresql
-    fromSecret:
-      namespace: default
-      secret: dbms-dev-postgres-secret

@@ -17,6 +17,7 @@
 package persistence
 
 // DatabaseBindingRepository allows CRUD operations on a DatabaseBinding
+//go:generate $GOPATH/bin/mockery -name DatabaseBindingRepository
 type DatabaseBindingRepository interface {
 
 	// AddDatabaseBinding adds a database binding
@@ -34,6 +35,7 @@ type DatabaseBindingRepository interface {
 }
 
 // EventRepository allows to store and query all processed events
+//go:generate $GOPATH/bin/mockery -name EventRepository
 type EventRepository interface {
 
 	// WasProcessed returns true if an eventId was found in the database
@@ -46,6 +48,7 @@ type EventRepository interface {
 }
 
 // DatabaseInstanceRepository allows CRUD operations on a DatabaseInstance
+//go:generate $GOPATH/bin/mockery -name DatabaseInstanceRepository
 type DatabaseInstanceRepository interface {
 
 	// UpdateDatabaseInstanceState updates the state property of a database instance

@@ -17,6 +17,7 @@
 package restapi
 
 import (
+	"github.com/Sirupsen/logrus"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
@@ -101,5 +102,9 @@ func (this *RestCommandApi) runServer(htmlPath string) {
 		})
 	})
 
-	r.Run()
+	err := r.Run()
+
+	if err != nil {
+		logrus.Panicf("Unexpected error during run rest-api: %v", err)
+	}
 }

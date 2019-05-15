@@ -46,6 +46,8 @@ type DatabaseBindingService interface {
 	FindBindingsByState(state persistence.ProvisioningState) []persistence.DatabaseBinding
 }
 
+// The PersistentDatabaseBindingService saves the state of the bindings
+// in a persistent database.
 type PersistentDatabaseBindingService struct {
 	bindingRepo persistence.DatabaseBindingRepository
 }

@@ -51,3 +51,24 @@ func TestMd5Short(t *testing.T) {
 	md5sum := Md5Short(inputString)
 	assert.Equal(t, "3e800292", md5sum)
 }
+
+func TestCreateTempFile(t *testing.T) {
+	file := CreateTempFile()
+
+	assert.Regexp(t, "/tmp/sdp-[0-9]+", file)
+}
+
+func TestGetKubectlContext(t *testing.T) {
+	ctx := GetKubectlContext()
+	assert.Regexp(t, "[a-zA-z0-9-]+", ctx)
+}
+
+func TestPanicIfNotMinikube(t *testing.T) {
+	ctx := GetKubectlContext()
+
+	if ctx == "minikube" {
+		t.Skip("Cannot test panic function if current k8s context is set to minikube, skipping test")
+	}
+
+	assert.Panics(t, PanicIfNotMinikube)
+}

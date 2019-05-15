@@ -1,3 +1,11 @@
+operationMode: managing
+#  * **managing**:
+#  ** when the resources are removed, also the databases and secrets are removed
+#
+#  * **preserving** :
+#  ** databases and secrets are never deleted
+#  ** databases and secrets are never modified
+
 dbmsServers:
   - name: dbms-dev-postgres
     type: postgresql
