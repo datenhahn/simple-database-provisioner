@@ -1,0 +1,7 @@
+apiVersion: simpledatabaseprovisioner.k8s.ecodia.de/v1alpha1
+kind: SimpleDatabaseBinding
+metadata:
+  name: sample-applicationCOUNTER-binding
+spec:
+  instanceName: sample-applicationCOUNTER-database
+  secretName: sample-applicationCOUNTER-database-secret
