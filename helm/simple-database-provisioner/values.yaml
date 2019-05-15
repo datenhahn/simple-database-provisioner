@@ -2,7 +2,7 @@ replicaCount: 1
 containerPort: 8080
 
 config:
-  operationMode: preserving
+  operationMode: managing
 
 image:
   name: ecodia/simple-database-provisioner
